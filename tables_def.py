@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint, create_engine
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint, create_engine
 
 db_engine = create_engine('mysql+pymysql://root:@localhost')
 db_engine.execute("DROP DATABASE IF EXISTS RMSA") #drop db if exists
@@ -16,6 +16,10 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(20))
     password = Column(String(60))
+
+    __table_args__ = (
+        UniqueConstraint('username'),
+        )
 
     #---------------------------------------------------------------------------
     def __init__(self, username, password):

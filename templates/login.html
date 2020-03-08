@@ -3,5 +3,23 @@
 {% block title %}Login{% endblock %}
 
 {% block body %}
-Hello World!
+
+  <div class="container">
+    <form action="" method="post">
+      <label>Username</label>
+      <input type="text" class="form-control" placeholder="Username" name="username">
+      <br>
+      <label>Password</label>
+      <input type="password" class="form-control" placeholder="Password" name="password">
+      <br>
+      <button type="submit" class="btn btn-default">Submit</button>
+    </form>
+    <br>
+    {%- for category, message in get_flashed_messages(with_categories = true) %}
+       <div class = "alert alert-danger">
+          {{ message }}
+       </div>
+    {%- endfor %}
+  </div>
+
 {% endblock %}
