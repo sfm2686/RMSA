@@ -27,6 +27,9 @@ class User(Base):
         self.username = username
         self.password = password
 
+    def __repr__(self):
+        return (self.username)
+
 ################################################################################
 class Role(Base):
     """"""
@@ -47,6 +50,10 @@ class User_role(Base):
 
     role_id = Column(Integer, ForeignKey("roles.id"), primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+
+    __table_args__ = (
+        UniqueConstraint('user_id'),
+        )
 
     #---------------------------------------------------------------------------
     def __init__(self, role_id, user_id):
