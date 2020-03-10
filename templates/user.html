@@ -4,16 +4,46 @@
 
 {% block body %}
 
+  <script>
+    window.onload = function() {
+      document.getElementById('deleteLink').onclick = function() {
+        var answer = confirm("Are you sure you wish to delete this user?");
+        if (answer) {
+          window.location = "{{ url_for('delete_user', id=data.User.id) }}";
+          // console.log("fucking deleting the user");
+        } else {
+          return;
+        }
+      };
+    };
+  </script>
+
   <div class="container">
     <form action="" method="post">
-      <input type="hidden" class="form-control" name="id" value="{{ user['id'] }}">
+      <input type="hidden" class="form-control" name="id" value="{{ data.User.id }}">
       <label>Username</label>
-      <input type="text" class="form-control" placeholder="Username" name="username" value="{{ user['username'] }}">
+      <input type="text" class="form-control" placeholder="Username" name="username" value="{{ data.User.username }}">
+      <br>
+      <label>Role</label>
+      <select class="form-control" name="role">
+        <option value="{{ roles.ADMIN.value }}"
+          {% if roles.ADMIN.value == data.Role.id %}
+            {{ 'selected' }}
+          {% endif %}>
+           {{ roles.ADMIN.name }}
+        </option>
+        <option value="{{ roles.USER.value }}"
+          {% if roles.USER.value == data.Role.id %}
+            {{ 'selected' }}
+          {% endif %}>
+          {{ roles.USER.name }}
+        </option>
+      </select>
       <br>
       <button type="submit" class="btn btn-default">Update</button>
     </form>
     <br>
-    <button class="btn btn-danger">Delete</button>
+    <a id="deleteLink" class="btn btn-danger" role="button">Delete User</a>
   </div>
 
 {% endblock %}

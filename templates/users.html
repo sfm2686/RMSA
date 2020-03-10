@@ -22,7 +22,7 @@
             <!-- <th>Action</th> -->
           </tr>
           {% for user in users %}
-            <tr class="clickable-row" data-href="{{ url_for('user', id=user['user_id']) }}">
+            <tr class="clickable-row" data-href="{{ url_for('show_user', id=user['user_id']) }}">
               <td><a href="#">{{ user['user_id'] }}</a></td>
               <td><a href="#">{{ user['username'] }}</a></td>
               <td><a href="#">{{ user['user_role'] }}</a></td>

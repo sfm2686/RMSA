@@ -26,11 +26,12 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="{{ url_for('reports') }}">RMSA</a>
+          <!-- <a class="navbar-brand" href="">RMSA</a> -->
         </div>
         {% if session["loggedin"] %}
           <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
             <ul class="nav navbar-nav">
+              <li><a href="{{ url_for('reports') }}">Reports</a></li>
               {% if session['has_admin_access'] %}
                 <li><a href="{{ url_for('users') }}">Users</a></li>
               {% endif %}
