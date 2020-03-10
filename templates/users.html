@@ -33,6 +33,7 @@
       {% else %}
         <div class="alert alert-info" role="alert">No users were found!</div>
       {% endif %}
+      <a class="btn" role="button" href="{{ url_for('add_user') }}">Add User</a>
   </div>
 
 {% endblock %}

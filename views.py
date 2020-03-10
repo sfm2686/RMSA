@@ -1,6 +1,7 @@
 from __init__ import app, db_engine
 from flask import render_template, request, url_for, session, flash, redirect
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 from tables_def import *
 from functools import wraps
 from validators import *
@@ -94,7 +95,6 @@ def users():
     results = (db_sess.query(User, Role)
         .filter(User.role_id == Role.id)
         .all())
-
     users = []
     for col in results:
         user_dict = {}
@@ -104,6 +104,48 @@ def users():
         user_dict['group_count'] = len(load_user_groups(col.User.id))
         users.append(user_dict)
     return render_template("users.html", users=users)
+
+# needs to be tested more
+@app.route('/add_user', methods=['GET', 'POST'])
+@require_admin_access
+@require_login
+def add_user():
+    data = {}
+    data['roles'] = Roles_enum
+    groups = []
+    for group in load_all_groups():
+        user_in_group = False
+        groups.append((group.id, group.group_name, user_in_group))
+    data['groups'] = groups
+    if request.method == 'POST':
+        if (not request.form['username'] or not is_username_valid(request.form['username'])
+            or not is_password_valid(request.form['password1'])):
+            flash("Invalid input", "alert alert-danger")
+            return render_template("add_user.html", data=data)
+        if request.form["password1"] != request.form['password2']:
+            flash("Passwords must match", "alert alert-danger")
+            return render_template("add_user.html", data=data)
+        new_user = (User(request.form['username']
+                    ,bcrypt.hashpw(request.form['password1'].encode("utf-8"), bcrypt.gensalt())
+                    ,request.form['role']))
+        db_sess.add(new_user)
+        try:
+            db_sess.commit()
+        except IntegrityError:
+            db_sess.rollback()
+            flash("Username is already taken", "alert alert-danger")
+            return render_template("add_user.html", data=data)
+        for posted_g_id in request.form.getlist('group'):
+            try:
+                db_sess.add(User_groups(posted_g_id, new_user.id))  # add user to this group
+            except Exception as e:
+                print(e)
+                flash("Invalid group input", "alert alert-danger")
+                return render_template("add_user.html", data=data)
+        db_sess.commit() # add new user to groups in db
+        flash("User saved successfully", "alert alert-success")
+        return redirect(url_for('users'))
+    return render_template("add_user.html", data=data)
 
 @app.route('/user', methods=['GET'])
 @require_admin_access
@@ -159,7 +201,7 @@ def update_user():
             if not int(posted_g_id) in user_groups_list: # add user to this group
                 db_sess.add(User_groups(posted_g_id, user_id))
         except:
-            flash("Invalid input", "alert alert-danger")
+            flash("Invalid group input", "alert alert-danger")
             return redirect(url_for('show_user', id=request.form['id']))
     for group in all_groups_results:
         if not str(group.id) in request.form.getlist('group'): # remove user from this group

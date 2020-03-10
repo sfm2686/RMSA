@@ -1,0 +1,48 @@
+{% extends 'layout.html' %}
+
+{% block title %}Add User{% endblock %}
+
+{% block body %}
+
+  <div class="container">
+    <form action="" method="post">
+      <label>Username</label>
+      <input type="text" class="form-control" placeholder="Username" name="username">
+      <br>
+      <label>Password</label>
+      <input type="password" class="form-control" placeholder="Password" name="password1">
+      <br>
+      <label>Password Confirmation</label>
+      <input type="password" class="form-control" placeholder="Password Confirmation" name="password2">
+      <br>
+      <label>Role</label>
+      <select class="form-control" name="role">
+        <option value="{{ data['roles'].ADMIN.value }}">{{ data['roles'].ADMIN.name }}</option>
+        <option value="{{ data['roles'].USER.value }}">{{ data['roles'].USER.name }}</option>
+      </select>
+      <br>
+      {% if data['groups'] %}
+        <table class="table table-striped table-bordered table-hover table-condensed">
+          <tr>
+            <th>Group ID</th>
+            <th>Group Name</th>
+            <th>Add/Remove</th>
+          </tr>
+          {% for g_id, g_name, user_in_group in data['groups'] %}
+            <tr>
+              <td>{{ g_id }}</td>
+              <td>{{ g_name }}</td>
+              <td><input type="checkbox" name=group value="{{ g_id }}"
+                ></td>
+            </tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <div class="alert alert-info" role="alert">No groups found</div>
+      {% endif %}
+      <br>
+      <button type="submit" class="btn btn-default">Save</button>
+    </form>
+  </div>
+
+{% endblock %}

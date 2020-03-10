@@ -42,24 +42,6 @@ class User(Base):
         return "username: {}, role_id:{}".format(self.username, self.role_id)
 
 ################################################################################
-# class User_role(Base):
-#     """"""
-#     __tablename__ = "user_roles"
-#
-#     role_id = Column(Integer, ForeignKey("roles.id"), primary_key=True)
-#     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-#
-#     __table_args__ = (
-#         UniqueConstraint('user_id'), # one role per user
-#         )
-#
-#     #---------------------------------------------------------------------------
-#     def __init__(self, role_id, user_id):
-#         """"""
-#         self.role_id = role_id
-#         self.user_id = user_id
-
-################################################################################
 class Group(Base):
     """"""
     __tablename__ = "groups_table"
