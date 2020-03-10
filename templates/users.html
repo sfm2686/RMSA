@@ -19,14 +19,14 @@
             <th>User ID</th>
             <th>Username</th>
             <th>Role</th>
-            <!-- <th>Action</th> -->
+            <th>Number of Groups</th>
           </tr>
           {% for user in users %}
             <tr class="clickable-row" data-href="{{ url_for('show_user', id=user['user_id']) }}">
               <td><a href="#">{{ user['user_id'] }}</a></td>
               <td><a href="#">{{ user['username'] }}</a></td>
               <td><a href="#">{{ user['user_role'] }}</a></td>
-              <!-- <td><button>Modify</button></td> -->
+              <td><a href="#">{{ user['group_count'] }}</a></td>
             </tr>
           {% endfor %}
         </table>

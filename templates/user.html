@@ -9,8 +9,7 @@
       document.getElementById('deleteLink').onclick = function() {
         var answer = confirm("Are you sure you wish to delete this user?");
         if (answer) {
-          window.location = "{{ url_for('delete_user', id=data.User.id) }}";
-          // console.log("fucking deleting the user");
+          window.location = "{{ url_for('delete_user', id=data['user'].User.id) }}";
         } else {
           return;
         }
@@ -20,25 +19,46 @@
 
   <div class="container">
     <form action="" method="post">
-      <input type="hidden" class="form-control" name="id" value="{{ data.User.id }}">
+      <input type="hidden" class="form-control" name="id" value="{{ data['user'].User.id }}">
       <label>Username</label>
-      <input type="text" class="form-control" placeholder="Username" name="username" value="{{ data.User.username }}">
+      <input type="text" class="form-control" placeholder="Username" name="username" value="{{ data['user'].User.username }}">
       <br>
       <label>Role</label>
       <select class="form-control" name="role">
-        <option value="{{ roles.ADMIN.value }}"
-          {% if roles.ADMIN.value == data.Role.id %}
+        <option value="{{ data['roles'].ADMIN.value }}"
+          {% if data['roles'].ADMIN.value == data['user'].User.role_id %}
             {{ 'selected' }}
           {% endif %}>
-           {{ roles.ADMIN.name }}
+           {{ data['roles'].ADMIN.name }}
         </option>
-        <option value="{{ roles.USER.value }}"
-          {% if roles.USER.value == data.Role.id %}
+        <option value="{{ data['roles'].USER.value }}"
+          {% if data['roles'].USER.value == data['user'].User.role_id %}
             {{ 'selected' }}
           {% endif %}>
-          {{ roles.USER.name }}
+          {{ data['roles'].USER.name }}
         </option>
       </select>
+      <br>
+      {% if data['groups'] %}
+        <table class="table table-striped table-bordered table-hover table-condensed">
+          <tr>
+            <th>Group ID</th>
+            <th>Group Name</th>
+            <th>Add/Remove</th>
+          </tr>
+          {% for g_id, g_name, user_in_group in data['groups'] %}
+            <tr>
+              <td>{{ g_id }}</td>
+              <td>{{ g_name }}</td>
+              <td><input type="checkbox" name=group value="{{ g_id }}"
+                  {% if user_in_group %}checked{% endif %}
+                ></td>
+            </tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <div class="alert alert-info" role="alert">No groups found</div>
+      {% endif %}
       <br>
       <button type="submit" class="btn btn-default">Update</button>
     </form>

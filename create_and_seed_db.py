@@ -5,6 +5,7 @@ from tables_def import *
 from enums import *
 import tables_def
 import bcrypt
+import random
 
 db_engine = create_engine('mysql+pymysql://root:@localhost')
 db_engine.execute("DROP DATABASE IF EXISTS RMSA") #drop db if exists
@@ -29,24 +30,29 @@ sess.commit()
 ################################################################################
 # seed users data
 
-user = User("sultanmira", bcrypt.hashpw(b"admin", bcrypt.gensalt()))
+user = User("sultanmira", bcrypt.hashpw(b"admin", bcrypt.gensalt()), admins_role.id)
 sess.add(user)
 sess.commit()
 
-associated_role = User_role(admins_role.id, user.id)
-sess.add(associated_role)
-
-
+users_list = [user]
 for userinfo in ["elonmusk", "timcook"]:
-    user = User(userinfo, bcrypt.hashpw(userinfo.encode("utf-8"), bcrypt.gensalt()))
+    user = User(userinfo, bcrypt.hashpw(userinfo.encode("utf-8"), bcrypt.gensalt()), users_role.id)
     sess.add(user)
     sess.commit()
-
-    associated_role = User_role(users_role.id, user.id)
-    sess.add(associated_role)
+    users_list.append(user)
 
 sess.commit()
 ################################################################################
 # seed groups data
 
+for g in ["Saudi Arabia", "Germany", "UK", "General"]:
+    group = Group(g)
+    sess.add(group)
+    sess.commit()
+
+    for user in users_list:
+        if random.choice([True, False]):
+            sess.add(User_groups(group.id, user.id))
+
+sess.commit()
 ################################################################################
