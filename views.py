@@ -161,8 +161,13 @@ def delete_group():
     if not group:
         flash("Group not found", "alert alert-danger")
         return redirect(url_for('groups'))
-    db_sess.delete(group)
-    db_sess.commit()
+    try:
+        db_sess.delete(group)
+        db_sess.commit()
+    except IntegrityError:
+        db_sess.rollback()
+        flash("Please ensure no users belong to the group before attempting to delete it", "alert alert-danger")
+        return redirect(url_for('show_group', id=request.args.get('id')))
     flash("Group deleted successfully", "alert alert-success")
     return redirect(url_for('groups'))
 
@@ -203,6 +208,9 @@ def add_user(): # TODO ensure users belong to at least one group
             return render_template("add_user.html", data=data)
         if request.form["password1"] != request.form['password2']:
             flash("Passwords must match", "alert alert-danger")
+            return render_template("add_user.html", data=data)
+        if len(request.form.getlist('group')) == 0:
+            flash("User must be added to at least one group", "alert alert-danger")
             return render_template("add_user.html", data=data)
         new_user = (User(request.form['username']
                     ,bcrypt.hashpw(request.form['password1'].encode("utf-8"), bcrypt.gensalt())
@@ -255,7 +263,7 @@ def show_user():
 @app.route('/user', methods=['POST'])
 @require_admin_access
 @require_login
-def update_user(): # TODO ensure users belong to at least one group
+def update_user():
     if not request.form['id']:
         flash("User not found", "alert alert-danger")
         return redirect(url_for('users'))
@@ -269,23 +277,32 @@ def update_user(): # TODO ensure users belong to at least one group
         return redirect(url_for('users'))
     user_groups = load_user_groups(user_id)
     user_groups_list = []
-    for group in user_groups: # create a list of group ids that the user belongs to
-        user_groups_list.append(group.Group.id)
-    all_groups_results = load_all_groups()
+    for col in user_groups: # create a list of group ids that the user belongs to
+        user_groups_list.append(col.Group.id)
 
-    for posted_g_id in request.form.getlist('group'):
+    for posted_g_id in request.form.getlist('group'): # check groups to be added
         try:
             if not int(posted_g_id) in user_groups_list: # add user to this group
                 db_sess.add(User_groups(posted_g_id, user_id))
         except:
             flash("Invalid group input", "alert alert-danger")
             return redirect(url_for('show_user', id=request.form['id']))
-    for group in all_groups_results:
-        if not str(group.id) in request.form.getlist('group'): # remove user from this group
-            (db_sess.query(User_groups)
+    user_groups = load_user_groups(user_id) # get updated user groups
+    for group in load_all_groups(): # check groups to be removed
+        if not str(group.id) in request.form.getlist('group'):
+            group_to_delete = (db_sess.query(User_groups)
                 .filter(User_groups.user_id == user_id)
                 .filter(User_groups.group_id == group.id)
-                .delete())
+                .first())
+            if not group_to_delete:
+                continue
+            if len(user_groups) <= 1:
+                flash("User must belong to at least one group", "alert alert-danger")
+                return redirect(url_for('show_user', id=user_id))
+            elif len(user_groups) > 1:  # remove user from this group
+                db_sess.delete(group_to_delete)
+                print(group_to_delete)
+                user_groups = load_user_groups(user_id) # get updated user groups
     result.User.username = request.form['username']
     result.User.role_id = request.form['role']
     try:
