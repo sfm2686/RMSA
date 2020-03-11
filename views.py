@@ -188,7 +188,7 @@ def users():
 @app.route('/add_user', methods=['GET', 'POST'])
 @require_admin_access
 @require_login
-def add_user():
+def add_user(): # TODO ensure users belong to at least one group
     data = {}
     data['roles'] = Roles_enum
     groups = []
@@ -255,7 +255,7 @@ def show_user():
 @app.route('/user', methods=['POST'])
 @require_admin_access
 @require_login
-def update_user():
+def update_user(): # TODO ensure users belong to at least one group
     if not request.form['id']:
         flash("User not found", "alert alert-danger")
         return redirect(url_for('users'))

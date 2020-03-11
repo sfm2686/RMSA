@@ -28,3 +28,11 @@ Candidates should keep three things in mind while implementing this project:
 1. Consider that a large set of reports already are existing and need to ported to this system.
 2. Consider that a new report will be uploaded to the system.
 3. Consider the authority for viewing reports according to the user allowed groups and role.
+
+
+Assumptions:
+- Admins can see all groups in the system even the ones they dont belong to
+- Typically, files related to reports will be unique (different reports will not typically have the same files)
+- Typically, reports will be unique across the entire system (different groups will not have the same reports)
+and each report belongs to one group only
+- Tags, roles and file types(media types) are predefined in the system and dont support CRUD operations

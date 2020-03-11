@@ -17,8 +17,8 @@
       <br>
       <label>Role</label>
       <select class="form-control" name="role">
-        <option value="{{ data['roles'].ADMIN.value }}">{{ data['roles'].ADMIN.name }}</option>
-        <option value="{{ data['roles'].USER.value }}">{{ data['roles'].USER.name }}</option>
+        <option value="{{ data['roles'].ADMIN.value }}">{{ data['roles'].ADMIN.name.capitalize() }}</option>
+        <option value="{{ data['roles'].USER.value }}">{{ data['roles'].USER.name.capitalize() }}</option>
       </select>
       <br>
       {% if data['groups'] %}

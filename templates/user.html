@@ -29,13 +29,13 @@
           {% if data['roles'].ADMIN.value == data['user'].User.role_id %}
             {{ 'selected' }}
           {% endif %}>
-           {{ data['roles'].ADMIN.name }}
+           {{ data['roles'].ADMIN.name.capitalize() }}
         </option>
         <option value="{{ data['roles'].USER.value }}"
           {% if data['roles'].USER.value == data['user'].User.role_id %}
             {{ 'selected' }}
           {% endif %}>
-          {{ data['roles'].USER.name }}
+          {{ data['roles'].USER.name.capitalize() }}
         </option>
       </select>
       <br>
