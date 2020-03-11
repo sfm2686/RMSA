@@ -30,7 +30,7 @@ def require_login(endpoint):
             return redirect(url_for('login'))
     return check_login
 
-################################# Helpers ####################################
+################################## Helpers #####################################
 def load_user(user_id):
     return (db_sess.query(User, Role)
         .filter(User.id == user_id)
@@ -47,7 +47,14 @@ def load_all_groups():
     return (db_sess.query(Group)
         .all())
 
-################################ Endpoints ####################################
+def load_group(group_id):
+    return (db_sess.query(Group)
+        .filter(Group.id == group_id)
+        .first())
+
+################################################################################
+################################ Endpoints #####################################
+################################################################################
 # TODO add csrf token
 # @app.route('/', methods=['GET', 'POST'])
 # def login():
@@ -73,7 +80,7 @@ def login():
     if request.method == 'POST':
         session["loggedin"] = True
         session["has_admin_access"] = True
-        return redirect(url_for('users'))
+        return redirect(url_for('groups'))
 
     return render_template("login.html")
 
@@ -88,6 +95,78 @@ def logout():
 def reports():
     return render_template("reports.html")
 
+################################## Groups ######################################
+@app.route('/groups')
+@require_admin_access
+@require_login
+def groups():
+    return render_template("groups.html", groups=load_all_groups())
+
+@app.route('/group', methods=['GET'])
+@require_admin_access
+@require_login
+def show_group():
+    group = load_group(request.args.get('id'))
+    if not group:
+        flash("Group not found", "alert alert-danger")
+        return redirect(url_for('groups'))
+    return render_template("group.html", group=group)
+
+@app.route('/group', methods=['POST'])
+@require_admin_access
+@require_login
+def update_group():
+    if not request.form['id']:
+        flash("Group not found", "alert alert-danger")
+        return redirect(url_for('groups'))
+    if not request.form['name'] or not is_group_name_valid(request.form['name']):
+        flash("Invalid input", "alert alert-danger")
+        return redirect(url_for('show_group', id=request.form['id']))
+    group = load_group(request.form['id'])
+    group.group_name = request.form['name']
+    try:
+        db_sess.commit()
+    except IntegrityError:
+        db_sess.rollback()
+        flash("Group name is already taken", "alert alert-danger")
+        return redirect(url_for('show_group', id=request.form['id']))
+    flash("Group updated successfully", "alert alert-success")
+    return redirect(url_for('groups'))
+
+@app.route('/add_group', methods=['GET', 'POST'])
+@require_admin_access
+@require_login
+def add_group():
+    if request.method == 'POST':
+        if (not request.form['name'] or not is_group_name_valid(request.form['name'])):
+            flash("Invalid input", "alert alert-danger")
+            return render_template("add_group.html")
+        new_group = Group(request.form['name'])
+        try:
+            db_sess.add(new_group)
+            db_sess.commit()
+        except IntegrityError:
+            db_sess.rollback()
+            flash("Group name already taken", "alert alert-danger")
+            return render_template("add_group.html")
+        flash("Group saved successfully", "alert alert-success")
+        return redirect(url_for('groups'))
+    return render_template("add_group.html") # method == GET
+
+@app.route('/delete_group', methods=['GET'])
+@require_admin_access
+@require_login
+def delete_group():
+    group = load_group(request.args.get('id'))
+    if not group:
+        flash("Group not found", "alert alert-danger")
+        return redirect(url_for('groups'))
+    db_sess.delete(group)
+    db_sess.commit()
+    flash("Group deleted successfully", "alert alert-success")
+    return redirect(url_for('groups'))
+
+################################### Users ######################################
 @app.route('/users')
 @require_admin_access
 @require_login
@@ -158,8 +237,6 @@ def show_user():
         return redirect(url_for('users'))
     user_groups = load_user_groups(user_id)
     group_results = load_all_groups()
-    if not group_results:
-        flash("No groups found", "alert alert-warning")
     data = {}
     data['user'] = user
     data['roles'] = Roles_enum
@@ -209,12 +286,16 @@ def update_user():
                 .filter(User_groups.user_id == user_id)
                 .filter(User_groups.group_id == group.id)
                 .delete())
-
     result.User.username = request.form['username']
     result.User.role_id = request.form['role']
-    db_sess.commit()
+    try:
+        db_sess.commit()
+    except IntegrityError:
+        db_sess.rollback()
+        flash("Username is already taken", "alert alert-danger")
+        return redirect(url_for('show_user', id=user_id))
     flash("User updated successfully", "alert alert-success")
-    return redirect(url_for('show_user', id=user_id))
+    return redirect(url_for('users'))
 
 @app.route('/delete_user', methods=['GET'])
 @require_admin_access
@@ -226,8 +307,10 @@ def delete_user():
         return redirect(url_for('users'))
     db_sess.delete(result.User)
     db_sess.commit()
+    flash("User deleted successfully", "alert alert-success")
     return redirect(url_for('users'))
 
+############################# Error Handlers ###################################
 @app.errorhandler(404)
 def not_found(e):
     return render_template("404.html")

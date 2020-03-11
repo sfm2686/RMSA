@@ -1,0 +1,32 @@
+{% extends 'layout.html' %}
+
+{% block title %}Group{% endblock %}
+
+{% block body %}
+
+<script>
+  window.onload = function() {
+    document.getElementById('deleteLink').onclick = function() {
+      var answer = confirm("Are you sure you wish to delete this group? Deleting this group would also delete any reports associated with it.");
+      if (answer) {
+        window.location = "{{ url_for('delete_group', id=group.id) }}";
+      } else {
+        return;
+      }
+    };
+  };
+</script>
+
+<div class="container">
+  <form action="" method="post">
+    <input type="hidden" class="form-control" name="id" value="{{ group.id }}">
+    <label>Username</label>
+    <input type="text" class="form-control" placeholder="Group name" name="name" value="{{ group.group_name }}">
+    <br>
+    <button type="submit" class="btn btn-default">Save</button>
+  </form>
+  <br>
+  <a id="deleteLink" class="btn btn-danger" role="button">Delete</a>
+</div>
+
+{% endblock %}

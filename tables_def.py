@@ -49,6 +49,10 @@ class Group(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     group_name = Column(String(20))
 
+    __table_args__ = (
+        UniqueConstraint('group_name'),
+        )
+
     #---------------------------------------------------------------------------
     def __init__(self, group_name):
         """"""
@@ -59,7 +63,7 @@ class User_groups(Base):
     """"""
     __tablename__ = "user_groups"
 
-    group_id = Column(Integer, ForeignKey("groups_table.id"), primary_key=True)
+    group_id = Column(Integer, ForeignKey("groups_table.id", ondelete="CASCADE"), primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
 
     #---------------------------------------------------------------------------

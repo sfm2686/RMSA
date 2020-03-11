@@ -31,9 +31,9 @@
           {% endfor %}
         </table>
       {% else %}
-        <div class="alert alert-info" role="alert">No users were found!</div>
+        <div class="alert alert-info" role="alert">No users found</div>
       {% endif %}
-      <a class="btn" role="button" href="{{ url_for('add_user') }}">Add User</a>
+      <a class="btn btn-default" role="button" href="{{ url_for('add_user') }}">Add</a>
   </div>
 
 {% endblock %}
