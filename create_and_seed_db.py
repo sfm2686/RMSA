@@ -80,7 +80,7 @@ sess.commit()
 ################################################################################
 # seed dummy reports data
 
-sample_names = ["COVID-19", "Moon Landing", "Mohammed Ali vs Mike Tyson", "Albaik in Goes International",
+sample_names = ["19-NCOV", "Jupiter Landing!", "Mohammed Ali vs Mike Tyson", "Albaik Goes International",
                 "One Piece Airs Last Episode", "Blizzard Releases TBC", "Stackoverflow Goes Mobile!"]
 sample_desc = "Lorem ipsum dolor sit amet." * 6
 
@@ -104,10 +104,10 @@ data_storage_path = "media-storage"
 
 # clean old data samples
 for mt in Media_types_enum:
-    for file in glob.glob("{}/*".format(os.path.join(data_storage_path, mt.name))):
+    for file in glob.glob("{}/*.{}".format(os.path.join(data_storage_path, mt.name), mt.name)):
         os.remove(file)
 
-# generate new data samples
+# generate dummy files and associate them with randdomly selected reports
 sample_files = [(os.path.join(sample_data_dir, "txt-file.txt"), Media_types_enum.txt)
                 ,(os.path.join(sample_data_dir, "png-file.png"), Media_types_enum.png)
                 ,(os.path.join(sample_data_dir, "mp3-file.mp3"), Media_types_enum.mp3)
