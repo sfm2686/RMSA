@@ -113,6 +113,21 @@ class Tag(Base):
         self.tag = tag
 
 ################################################################################
+class Report_tags(Base):
+    """"""
+    __tablename__ = "report_tags"
+
+    report_id  = Column(Integer, ForeignKey("reports.id", ondelete="CASCADE"), primary_key=True)
+    tag_id     = Column(Integer, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
+
+    #---------------------------------------------------------------------------
+    def __init__(self, report_id, tag_id):
+        """"""
+        self.report_id = report_id
+        self.tag_id    = tag_id
+
+
+################################################################################
 class Report(Base):
     """"""
     __tablename__ = "reports"

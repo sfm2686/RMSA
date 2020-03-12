@@ -72,13 +72,15 @@ sess.commit()
 ################################################################################
 # seed tags data
 
+tag_ids = []
 for tag in Tags_enum:
     tag = Tag(tag.value, tag.name)
     sess.add(tag)
+    tag_ids.append(tag.id)
 
 sess.commit()
 ################################################################################
-# seed dummy reports data
+# seed dummy reports
 
 sample_names = ["19-NCOV", "Jupiter Landing!", "Mohammed Ali vs Mike Tyson", "Albaik Goes International",
                 "One Piece Airs Last Episode", "Blizzard Releases TBC", "Stackoverflow Goes Mobile!"]
@@ -92,6 +94,11 @@ for i in range(0, 20):
     group_id = random.choice(groups_ids)
     report = Report(name, sample_desc, creator_id, last_editor_id, group_id)
     sess.add(report)
+    sess.commit()
+    for tid in tag_ids:
+        if random.choice([True, False]):
+            report_tags = Report_tags(report.id, tid)
+            sess.add(report_tags)
     sess.commit()
     report_ids.append(report.id)
 

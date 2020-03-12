@@ -11,25 +11,6 @@ import bcrypt
 db_session = sessionmaker(bind=db_engine)
 db_sess = db_session()
 
-################################ Decorators ####################################
-def require_admin_access(endpoint):
-    @wraps(endpoint)
-    def check_access():
-        if session.get("has_admin_access"):
-            return endpoint()
-        else:
-            return redirect(url_for('reports'))
-    return check_access
-
-def require_login(endpoint):
-    @wraps(endpoint)
-    def check_login():
-        if session.get("loggedin"):
-            return endpoint()
-        else:
-            return redirect(url_for('login'))
-    return check_login
-
 ################################## Helpers #####################################
 def load_user(user_id):
     return (db_sess.query(User, Role)
@@ -51,6 +32,42 @@ def load_group(group_id):
     return (db_sess.query(Group)
         .filter(Group.id == group_id)
         .first())
+
+def load_user_reports(uid):
+    return (db_sess.query(User_groups, Report)
+        .filter(Report.group_id == User_groups.group_id)
+        .filter(uid == User_groups.user_id)
+        .all())
+
+def load_report_files(rid):
+    return (db_sess.query(File)
+        .filter(File.report_id == rid)
+        .all())
+
+def load_report_tags(rid):
+    return (db_sess.query(Tag, Report_tags)
+        .filter(Report_tags.report_id == rid)
+        .filter(Report_tags.tag_id == Tag.id)
+        .all())
+
+################################ Decorators ####################################
+def require_admin_access(endpoint):
+    @wraps(endpoint)
+    def check_access():
+        if session.get("has_admin_access"):
+            return endpoint()
+        else:
+            return redirect(url_for('index'))
+    return check_access
+
+def require_login(endpoint):
+    @wraps(endpoint)
+    def check_login():
+        if session.get("loggedin"):
+            return endpoint()
+        else:
+            return redirect(url_for('login'))
+    return check_login
 
 ################################################################################
 ################################ Endpoints #####################################
@@ -80,7 +97,8 @@ def login():
     if request.method == 'POST':
         session["loggedin"] = True
         session["has_admin_access"] = True
-        return redirect(url_for('groups'))
+        session["uid"] = 1
+        return redirect(url_for('reports'))
 
     return render_template("login.html")
 
@@ -90,10 +108,96 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/index')
+@require_login
+def index():
+    return render_template("index.html")
+
+################################## Reports #####################################
+# TODO implement user/group access for reports
 @app.route('/reports')
+@require_admin_access
 @require_login
 def reports():
-    return render_template("reports.html")
+    reports = load_user_reports(session.get("uid"))
+    data = []
+    for col in reports:
+        report_dict = {}
+        report_dict['id'] = col.Report.id
+        report_dict['name'] = col.Report.name
+        report_dict['desc'] = "{}...".format(col.Report.desc[:6])
+        report_dict['creatid'] = load_user(col.Report.creator_id).User.username
+        report_dict['editid'] = load_user(col.Report.last_editor_id).User.username
+        report_dict['group'] = load_group(col.Report.group_id).group_name
+        report_dict['nfiles'] = len(load_report_files(col.Report.id))
+        rtags = ""
+        for t in load_report_tags(col.Report.id):
+            rtags = rtags + t.Tag.tag + " "
+        report_dict['tags'] = "{}...".format(rtags[:6])
+        data.append(report_dict)
+    return render_template("reports.html", reports=data)
+
+@app.route('/report', methods=['GET'])
+@require_admin_access
+@require_login
+def show_report():
+    # search through user specific reports to ensure proper permission
+    user_reports = load_user_reports(session.get("uid"))
+    try:
+        req_rid = int(request.args.get('id'))
+    except ValueError:
+        flash("Report not found", "alert alert-danger")
+        return redirect(url_for('reports'))
+    report = None
+    for col in user_reports:
+        if req_rid == col.Report.id:
+            report = col.Report
+    if not report:
+        flash("Report not found", "alert alert-danger")
+        return redirect(url_for('reports'))
+    report_dict = {}
+    report_dict['id'] = report.id
+    report_dict['name'] = report.name
+    report_dict['desc'] = "{}...".format(report.desc[:6])
+    report_dict['creatid'] = load_user(report.creator_id).User.username
+    report_dict['editid'] = load_user(report.last_editor_id).User.username
+    report_dict['group'] = load_group(report.group_id).group_name
+    report_dict['nfiles'] = len(load_report_files(report.id))
+    rtags = ""
+    for t in load_report_tags(report.id):
+        rtags = rtags + t.Tag.tag + " "
+    report_dict['tags'] = "{}...".format(rtags[:6])
+    return render_template("report.html", report=report_dict)
+
+@app.route('/report', methods=['POST'])
+@require_admin_access
+@require_login
+def update_report():
+    return render_template("report.html")
+
+@app.route('/delete_report', methods=['GET'])
+@require_admin_access
+@require_login
+def delete_report():
+    # group = load_group(request.args.get('id'))
+    # if not group:
+    #     flash("Group not found", "alert alert-danger")
+    #     return redirect(url_for('groups'))
+    # try:
+    #     db_sess.delete(group)
+    #     db_sess.commit()
+    # except IntegrityError:
+    #     db_sess.rollback()
+    #     flash("Please ensure no users belong to the group before attempting to delete it", "alert alert-danger")
+    #     return redirect(url_for('show_group', id=request.args.get('id')))
+    # flash("Group deleted successfully", "alert alert-success")
+    return redirect(url_for('reports'))
+
+@app.route('/add_report')
+@require_admin_access
+@require_login
+def add_report():
+    return render_template("add_report.html")
 
 ################################## Groups ######################################
 @app.route('/groups')
