@@ -50,6 +50,10 @@ def load_report_tags(rid):
         .filter(Report_tags.tag_id == Tag.id)
         .all())
 
+def flash_and_redirect(msg, cat, dest):
+    flash(msg, cat)
+    return redirect(url_for(dest))
+
 ################################ Decorators ####################################
 def require_admin_access(endpoint):
     @wraps(endpoint)
@@ -77,18 +81,17 @@ def require_login(endpoint):
 # def login():
 #     if request.method == 'POST':
 #         if not request.form['username'] or not request.form['password']:
-#             flash("Please enter your username and password", "alert alert-danger")
-#             return render_template("login.html")
+#             return flash_and_redirect("Please enter your username and password", "alert alert-danger", "login")
 #         post_username = request.form['username']
 #         post_password = request.form['password']
 #         user = db_sess.query(User).filter_by(username=post_username).first()
 #         if user and bcrypt.checkpw(post_password.encode("utf-8"), user.password.encode("utf-8")):
 #             session["loggedin"] = True
 #             session["has_admin_access"] = Roles_enum.ADMIN.value == user.role_id
+#             session["uid"] = user.id
 #             return redirect(url_for('reports'))
 #         else:
-#             flash("Invalid username or password", "alert alert-danger")
-#             return render_template("login.html")
+#             return flash_and_redirect("Invalid username or password", "alert alert-danger", "login")
 #
 #     return render_template("login.html")
 
@@ -116,7 +119,6 @@ def index():
 ################################## Reports #####################################
 # TODO implement user/group access for reports
 @app.route('/reports')
-@require_admin_access
 @require_login
 def reports():
     reports = load_user_reports(session.get("uid"))
@@ -126,8 +128,16 @@ def reports():
         report_dict['id'] = col.Report.id
         report_dict['name'] = col.Report.name
         report_dict['desc'] = "{}...".format(col.Report.desc[:6])
-        report_dict['creatid'] = load_user(col.Report.creator_id).User.username
-        report_dict['editid'] = load_user(col.Report.last_editor_id).User.username
+        user = load_user(col.Report.creator_id)
+        if user:
+            report_dict['creatid'] = user.User.username
+        else:
+            report_dict['creatid'] = "Deleted"
+        user = load_user(col.Report.last_editor_id)
+        if user:
+            report_dict['editid'] = user.User.username
+        else:
+            report_dict['editid'] = "Deleted"
         report_dict['group'] = load_group(col.Report.group_id).group_name
         report_dict['nfiles'] = len(load_report_files(col.Report.id))
         rtags = ""
@@ -138,7 +148,6 @@ def reports():
     return render_template("reports.html", reports=data)
 
 @app.route('/report', methods=['GET'])
-@require_admin_access
 @require_login
 def show_report():
     # search through user specific reports to ensure proper permission
@@ -146,21 +155,27 @@ def show_report():
     try:
         req_rid = int(request.args.get('id'))
     except ValueError:
-        flash("Report not found", "alert alert-danger")
-        return redirect(url_for('reports'))
+        return flash_and_redirect("Report not found", "alert alert-danger", "reports")
     report = None
     for col in user_reports:
         if req_rid == col.Report.id:
             report = col.Report
     if not report:
-        flash("Report not found", "alert alert-danger")
-        return redirect(url_for('reports'))
+        return flash_and_redirect("Report not found", "alert alert-danger", "reports")
     report_dict = {}
     report_dict['id'] = report.id
     report_dict['name'] = report.name
     report_dict['desc'] = "{}...".format(report.desc[:6])
-    report_dict['creatid'] = load_user(report.creator_id).User.username
-    report_dict['editid'] = load_user(report.last_editor_id).User.username
+    user = load_user(col.Report.creator_id)
+    if user:
+        report_dict['creatid'] = user.User.username
+    else:
+        report_dict['creatid'] = "Deleted"
+    user = load_user(col.Report.last_editor_id)
+    if user:
+        report_dict['editid'] = user.User.username
+    else:
+        report_dict['editid'] = "Deleted"
     report_dict['group'] = load_group(report.group_id).group_name
     report_dict['nfiles'] = len(load_report_files(report.id))
     rtags = ""
@@ -170,13 +185,11 @@ def show_report():
     return render_template("report.html", report=report_dict)
 
 @app.route('/report', methods=['POST'])
-@require_admin_access
 @require_login
 def update_report():
     return render_template("report.html")
 
 @app.route('/delete_report', methods=['GET'])
-@require_admin_access
 @require_login
 def delete_report():
     # group = load_group(request.args.get('id'))
@@ -194,7 +207,6 @@ def delete_report():
     return redirect(url_for('reports'))
 
 @app.route('/add_report')
-@require_admin_access
 @require_login
 def add_report():
     return render_template("add_report.html")
@@ -212,8 +224,7 @@ def groups():
 def show_group():
     group = load_group(request.args.get('id'))
     if not group:
-        flash("Group not found", "alert alert-danger")
-        return redirect(url_for('groups'))
+        return flash_and_redirect("Group not found", "alert alert-danger", "groups")
     return render_template("group.html", group=group)
 
 @app.route('/group', methods=['POST'])
@@ -221,8 +232,7 @@ def show_group():
 @require_login
 def update_group():
     if not request.form['id']:
-        flash("Group not found", "alert alert-danger")
-        return redirect(url_for('groups'))
+        return flash_and_redirect("Group not found", "alert alert-danger", "groups")
     if not request.form['name'] or not is_group_name_valid(request.form['name']):
         flash("Invalid input", "alert alert-danger")
         return redirect(url_for('show_group', id=request.form['id']))
@@ -234,8 +244,7 @@ def update_group():
         db_sess.rollback()
         flash("Group name is already taken", "alert alert-danger")
         return redirect(url_for('show_group', id=request.form['id']))
-    flash("Group updated successfully", "alert alert-success")
-    return redirect(url_for('groups'))
+    return flash_and_redirect("Group updated successfully", "alert alert-success", "groups")
 
 @app.route('/add_group', methods=['GET', 'POST'])
 @require_admin_access
@@ -243,18 +252,15 @@ def update_group():
 def add_group():
     if request.method == 'POST':
         if (not request.form['name'] or not is_group_name_valid(request.form['name'])):
-            flash("Invalid input", "alert alert-danger")
-            return render_template("add_group.html")
+            return flash_and_redirect("Invalid input", "alert alert-danger", "add_group")
         new_group = Group(request.form['name'])
         try:
             db_sess.add(new_group)
             db_sess.commit()
         except IntegrityError:
             db_sess.rollback()
-            flash("Group name already taken", "alert alert-danger")
-            return render_template("add_group.html")
-        flash("Group saved successfully", "alert alert-success")
-        return redirect(url_for('groups'))
+            return flash_and_redirect("Group name already taken", "alert alert-danger", "add_group")
+        return flash_and_redirect("Group saved successfully", "alert alert-success", "groups")
     return render_template("add_group.html") # method == GET
 
 @app.route('/delete_group', methods=['GET'])
@@ -263,8 +269,7 @@ def add_group():
 def delete_group():
     group = load_group(request.args.get('id'))
     if not group:
-        flash("Group not found", "alert alert-danger")
-        return redirect(url_for('groups'))
+        return flash_and_redirect("Group not found", "alert alert-danger", "groups")
     try:
         db_sess.delete(group)
         db_sess.commit()
@@ -272,8 +277,7 @@ def delete_group():
         db_sess.rollback()
         flash("Please ensure no users belong to the group before attempting to delete it", "alert alert-danger")
         return redirect(url_for('show_group', id=request.args.get('id')))
-    flash("Group deleted successfully", "alert alert-success")
-    return redirect(url_for('groups'))
+    return flash_and_redirect("Group deleted successfully", "alert alert-success", "groups")
 
 ################################### Users ######################################
 @app.route('/users')
@@ -334,8 +338,7 @@ def add_user(): # TODO ensure users belong to at least one group
                 flash("Invalid group input", "alert alert-danger")
                 return render_template("add_user.html", data=data)
         db_sess.commit() # add new user to groups in db
-        flash("User saved successfully", "alert alert-success")
-        return redirect(url_for('users'))
+        return flash_and_redirect("User saved successfully", "alert alert-success", "users")
     return render_template("add_user.html", data=data)
 
 @app.route('/user', methods=['GET'])
@@ -345,8 +348,7 @@ def show_user():
     user_id = request.args.get('id')
     user = load_user(user_id)
     if not user:
-        flash("User not found", "alert alert-danger")
-        return redirect(url_for('users'))
+        return flash_and_redirect("User not found", "alert alert-danger", "users")
     user_groups = load_user_groups(user_id)
     group_results = load_all_groups()
     data = {}
@@ -369,16 +371,14 @@ def show_user():
 @require_login
 def update_user():
     if not request.form['id']:
-        flash("User not found", "alert alert-danger")
-        return redirect(url_for('users'))
+        return flash_and_redirect("User not found", "alert alert-danger", "users")
     if not request.form['username'] or not is_username_valid(request.form['username']):
         flash("Invalid input", "alert alert-danger")
         return redirect(url_for('show_user', id=request.form['id']))
     user_id = request.form['id']
     result = load_user(user_id)
     if not result:
-        flash("User not found", "alert alert-danger")
-        return redirect(url_for('users'))
+        return flash_and_redirect("User not found", "alert alert-danger", "users")
     user_groups = load_user_groups(user_id)
     user_groups_list = []
     for col in user_groups: # create a list of group ids that the user belongs to
@@ -415,8 +415,7 @@ def update_user():
         db_sess.rollback()
         flash("Username is already taken", "alert alert-danger")
         return redirect(url_for('show_user', id=user_id))
-    flash("User updated successfully", "alert alert-success")
-    return redirect(url_for('users'))
+    return flash_and_redirect("User updated successfully", "alert alert-success", "users")
 
 @app.route('/delete_user', methods=['GET'])
 @require_admin_access
