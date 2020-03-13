@@ -130,8 +130,12 @@ for i in range(0, 40):
     copyfile(file_path, dest)
     new_files.append((dest, mt))
 
+sample_file_names = ["Jupiter landing video", "Albaik's Best Meal", "Best Place to Visit",
+                    "Blizzard Ent.", "One Piece", "Best Webapp", "19-NCOV Shocking Facts!",
+                    "Stackoverflow", "Clean Code Example", "Super Classified", "Eyes Only!"]
+
 for nf in new_files:
-    file = File(nf[0], random.choice(report_ids), nf[1].value)
+    file = File(random.choice(sample_file_names), nf[0], random.choice(report_ids), nf[1].value)
     sess.add(file)
 
 sess.commit()

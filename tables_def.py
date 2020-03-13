@@ -154,13 +154,15 @@ class File(Base):
     __tablename__ = "files"
 
     id         = Column(Integer, primary_key=True, autoincrement=True)
+    name       = Column(String(40))
     file_path  = Column(String(40))
     report_id  = Column(Integer, ForeignKey("reports.id", ondelete="CASCADE"))
     media_type = Column(Integer, ForeignKey("media_types.id"))
 
     #---------------------------------------------------------------------------
-    def __init__(self, file_path, report_id, media_type):
+    def __init__(self, name, file_path, report_id, media_type):
         """"""
+        self.name       = name
         self.file_path  = file_path
         self.report_id  = report_id
         self.media_type = media_type

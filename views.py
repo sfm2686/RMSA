@@ -1,5 +1,5 @@
 from __init__ import app, db_engine
-from flask import render_template, request, url_for, session, flash, redirect
+from flask import render_template, request, url_for, session, flash, redirect, send_file
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from tables_def import *
@@ -25,8 +25,7 @@ def load_user_groups(user_id):
         .all())
 
 def load_all_groups():
-    return (db_sess.query(Group)
-        .all())
+    return (db_sess.query(Group).all())
 
 def load_group(group_id):
     return (db_sess.query(Group)
@@ -49,6 +48,9 @@ def load_report_tags(rid):
         .filter(Report_tags.report_id == rid)
         .filter(Report_tags.tag_id == Tag.id)
         .all())
+
+def load_all_tags():
+    return (db_sess.query(Tag).all())
 
 def flash_and_redirect(msg, cat, dest):
     flash(msg, cat)
@@ -116,8 +118,20 @@ def logout():
 def index():
     return render_template("index.html")
 
+@app.route('/download-file')
+@require_login
+def download_file():
+# TODO ensure user has proper permission to download this file!
+    id = request.args.get("id")
+    file = db_sess.query(File).filter(File.id == id).first()
+    if not file:
+        return redirect(url_for("not_found"))
+    try:
+        return send_file(file.file_path, as_attachment=True)
+    except FileNotFoundError:
+        return redirect(url_for("not_found"))
+
 ################################## Reports #####################################
-# TODO implement user/group access for reports
 @app.route('/reports')
 @require_login
 def reports():
@@ -160,12 +174,13 @@ def show_report():
     for col in user_reports:
         if req_rid == col.Report.id:
             report = col.Report
+            break
     if not report:
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
     report_dict = {}
     report_dict['id'] = report.id
     report_dict['name'] = report.name
-    report_dict['desc'] = "{}...".format(report.desc[:6])
+    report_dict['desc'] = report.desc
     user = load_user(col.Report.creator_id)
     if user:
         report_dict['creatid'] = user.User.username
@@ -176,18 +191,33 @@ def show_report():
         report_dict['editid'] = user.User.username
     else:
         report_dict['editid'] = "Deleted"
+    report_dict['group_id'] = report.group_id
     report_dict['group'] = load_group(report.group_id).group_name
-    report_dict['nfiles'] = len(load_report_files(report.id))
-    rtags = ""
+    report_dict['files'] = [file for file in load_report_files(report.id)]
+    report_dict['tags'] = []
     for t in load_report_tags(report.id):
-        rtags = rtags + t.Tag.tag + " "
-    report_dict['tags'] = "{}...".format(rtags[:6])
-    return render_template("report.html", report=report_dict)
+        report_dict['tags'].append(t.Tag)
+    groups = [r.Group for r in load_user_groups(session.get("uid"))]
+    tags = []
+    # flag the tags that the report belongs to
+    for tag in load_all_tags():
+        belongs_to = False
+        for rtag in load_report_tags(report.id):
+            if tag.id == rtag.Tag.id:
+                belongs_to = True
+                break
+        tags.append((tag.id, tag.tag, belongs_to))
+    return render_template("report.html", report=report_dict, groups=groups, tags=tags)
 
 @app.route('/report', methods=['POST'])
 @require_login
 def update_report():
     return render_template("report.html")
+
+@app.route('/add_report')
+@require_login
+def add_report():
+    return render_template("add_report.html")
 
 @app.route('/delete_report', methods=['GET'])
 @require_login
@@ -205,11 +235,6 @@ def delete_report():
     #     return redirect(url_for('show_group', id=request.args.get('id')))
     # flash("Group deleted successfully", "alert alert-success")
     return redirect(url_for('reports'))
-
-@app.route('/add_report')
-@require_login
-def add_report():
-    return render_template("add_report.html")
 
 ################################## Groups ######################################
 @app.route('/groups')
