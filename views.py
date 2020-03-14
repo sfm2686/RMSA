@@ -22,6 +22,11 @@ def flash_and_redirect(msg, cat, dest):
     flash(msg, cat)
     return redirect(url_for(dest))
 
+def delete_file_helper(file):
+    os.remove(file.file_path)
+    db_sess.delete(file)
+    db_sess.commit()
+
 ################################ Decorators ####################################
 def require_admin_access(endpoint):
     @wraps(endpoint)
@@ -115,6 +120,7 @@ def download_file():
 @app.route('/delete-file')
 @require_login
 def delete_file():
+    print("FUCKING CALLED")
     try: # missing or wrong data type input
         rid = int(request.args.get("report_id"))
         fid = int(request.args.get("file_id"))
@@ -133,9 +139,7 @@ def delete_file():
         flash("File not found", "alert alert-danger")
         return redirect(url_for("show_report", id=rid))
     try: # if phyiscal file was missing
-        os.remove(file.file_path)
-        db_sess.delete(file)
-        db_sess.commit()
+        delete_file_helper(file)
         flash("File deleted successfully", "alert alert-success")
         return redirect(url_for("show_report", id=rid))
     except FileNotFoundError:
@@ -222,13 +226,7 @@ def show_report():
 def update_report():
     if not request.form['id']:
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
-    if not is_report_name_valid(request.form['name']) or not is_report_desc_valid(request.form['desc']):
-        flash("Invalid name/description input", "alert alert-danger")
-        return redirect(url_for("show_report", id=request.form["id"]))
-    allowed_groups = [str(col.Group.id) for col in load_user_groups(db_sess, session.get("uid"))]
-    if request.form['group'] not in allowed_groups:
-        flash("Invalid group input", "alert alert-danger")
-        return redirect(url_for("show_report", id=request.form["id"]))
+    # search through user specific reports to ensure proper permission
     try:
         req_rid = int(request.args.get('id'))
     except ValueError:
@@ -240,6 +238,13 @@ def update_report():
             break
     if not report:
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
+    allowed_groups = [str(col.Group.id) for col in load_user_groups(db_sess, session.get("uid"))]
+    if request.form['group'] not in allowed_groups:
+        flash("Invalid group input", "alert alert-danger")
+        return redirect(url_for("show_report", id=request.form["id"]))
+    if not is_report_name_valid(request.form['name']) or not is_report_desc_valid(request.form['desc']):
+        flash("Invalid name/description input", "alert alert-danger")
+        return redirect(url_for("show_report", id=request.form["id"]))
     report.name = request.form['name']
     report.desc = request.form['desc']
     report.group_id = request.form['group']
@@ -294,20 +299,23 @@ def add_report():
 @app.route('/delete_report', methods=['GET'])
 @require_login
 def delete_report():
-    # TODO delete actual files related to the report
-    # group = load_group(request.args.get('id'))
-    # if not group:
-    #     flash("Group not found", "alert alert-danger")
-    #     return redirect(url_for('groups'))
-    # try:
-    #     db_sess.delete(group)
-    #     db_sess.commit()
-    # except IntegrityError:
-    #     db_sess.rollback()
-    #     flash("Please ensure no users belong to the group before attempting to delete it", "alert alert-danger")
-    #     return redirect(url_for('show_group', id=request.args.get('id')))
-    # flash("Group deleted successfully", "alert alert-success")
-    return redirect(url_for('reports'))
+    try:
+        req_rid = int(request.args.get('id'))
+    except ValueError:
+        return flash_and_redirect("Report not found", "alert alert-danger", "reports")
+    report = None
+    for col in load_user_reports(db_sess, session.get("uid")):
+        if req_rid == col.Report.id:
+            report = col.Report
+            break
+    if not report:
+        return flash_and_redirect("Report not found", "alert alert-danger", "reports")
+    report_files = load_report_files(db_sess, report.id)
+    for file in report_files:
+        delete_file_helper(file)
+    db_sess.delete(report)
+    db_sess.commit()
+    return flash_and_redirect("Report deleted successfully", "alert alert-success", "reports")
 
 ################################## Groups ######################################
 @app.route('/groups')
