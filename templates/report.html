@@ -41,19 +41,23 @@
       {% endfor %}
     </select>
     <br>
-    <label>Files</label>
-    <table class="table table-striped table-bordered table-hover table-condensed">
-      <tr>
-        <th>Download File</th>
-        <th>Remove File</th>
-      </tr>
-      {% for id, fname in report['files'] %}
+    {% if report['files'] %}
+      <label>Files</label>
+      <table class="table table-striped table-bordered table-hover table-condensed">
         <tr>
-          <td><a href="{{ url_for('download_file', id=id) }}">{{ fname }}</a></td>
-          <td><a href="#" class="btn btn-danger" role="button">Remove</a></td>
+          <th>Download File</th>
+          <th>Remove File</th>
         </tr>
-      {% endfor %}
-    </table>
+        {% for id, fname in report['files'] %}
+          <tr>
+            <td><a href="{{ url_for('download_file', file_id=id, report_id=report['id']) }}">{{ fname }}</a></td>
+            <td><a href="{{ url_for('delete_file', file_id=id, report_id=report['id']) }}" class="btn btn-danger" role="button">Remove</a></td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <div class="alert alert-info" role="alert">This report does not have any files</div>
+    {% endif %}
     <input type="file" name="file" multiple>
     <br>
     <label>Tags</label>

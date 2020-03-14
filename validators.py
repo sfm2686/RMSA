@@ -29,3 +29,6 @@ def is_filename_valid(name):
     allowed_exts = "." + allowed_exts
     regex = re.compile("^[\W\w\s]+\.[%s]{3}$" % allowed_exts)
     return regex.match(name)
+
+def is_file_path_valid(path):
+    return len(path) <= 160

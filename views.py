@@ -7,6 +7,7 @@ from tables_def import *
 from functools import wraps
 from validators import *
 from enums import *
+from db_helpers import *
 import bcrypt
 import os
 import time
@@ -17,46 +18,6 @@ db_session = sessionmaker(bind=db_engine)
 db_sess = db_session()
 
 ################################## Helpers #####################################
-def load_user(user_id):
-    return (db_sess.query(User, Role)
-        .filter(User.id == user_id)
-        .filter(User.role_id == Role.id)
-        .first())
-
-def load_user_groups(user_id):
-    return (db_sess.query(Group, User_groups)
-        .filter(User_groups.user_id == user_id)
-        .filter(User_groups.group_id == Group.id)
-        .all())
-
-def load_all_groups():
-    return (db_sess.query(Group).all())
-
-def load_group(group_id):
-    return (db_sess.query(Group)
-        .filter(Group.id == group_id)
-        .first())
-
-def load_user_reports(uid):
-    return (db_sess.query(User_groups, Report)
-        .filter(Report.group_id == User_groups.group_id)
-        .filter(uid == User_groups.user_id)
-        .all())
-
-def load_report_files(rid):
-    return (db_sess.query(File)
-        .filter(File.report_id == rid)
-        .all())
-
-def load_report_tags(rid):
-    return (db_sess.query(Tag, Report_tags)
-        .filter(Report_tags.report_id == rid)
-        .filter(Report_tags.tag_id == Tag.id)
-        .all())
-
-def load_all_tags():
-    return (db_sess.query(Tag).all())
-
 def flash_and_redirect(msg, cat, dest):
     flash(msg, cat)
     return redirect(url_for(dest))
@@ -123,41 +84,93 @@ def logout():
 def index():
     return render_template("index.html")
 
+################################### FILES ######################################
+
 @app.route('/download-file')
 @require_login
 def download_file():
-# TODO ensure user has proper permission to download this file!
-    id = request.args.get("id")
-    file = db_sess.query(File).filter(File.id == id).first()
+    try: # missing or wrong data type input
+        rid = int(request.args.get("report_id"))
+        fid = int(request.args.get("file_id"))
+    except (ValueError, TypeError):
+        return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
+    # ensure user has permission to access report content
+    user_report_ids = [col.Report.id for col in load_user_reports(db_sess, session.get("uid"))]
+    if rid not in user_report_ids:
+        return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
+    # ensure file belongs to correct report
+    report_file_ids = [f.id for f in load_report_files(db_sess, rid)]
+    if fid not in report_file_ids:
+        return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
+    file = db_sess.query(File).filter(File.id == fid).first()
     if not file:
-        return redirect(url_for("not_found"))
-    try:
+        flash("File not found", "alert alert-danger")
+        return redirect(url_for("show_report", id=rid))
+    try: # if phyiscal file was missing
         return send_file(file.file_path, as_attachment=True)
     except FileNotFoundError:
-        return flash_and_redirect("File not found", "alert alert-danger", "reports")
+        flash("File not found", "alert alert-danger")
+        return redirect(url_for("show_report", id=rid))
+
+@app.route('/delete-file')
+@require_login
+def delete_file():
+    try: # missing or wrong data type input
+        rid = int(request.args.get("report_id"))
+        fid = int(request.args.get("file_id"))
+    except (ValueError, TypeError):
+        return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
+    # ensure user has permission to access report content
+    user_report_ids = [col.Report.id for col in load_user_reports(db_sess, session.get("uid"))]
+    if rid not in user_report_ids:
+        return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
+    # ensure file belongs to correct report
+    report_file_ids = [f.id for f in load_report_files(db_sess, rid)]
+    if fid not in report_file_ids:
+        return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
+    file = db_sess.query(File).filter(File.id == fid).first()
+    if not file:
+        flash("File not found", "alert alert-danger")
+        return redirect(url_for("show_report", id=rid))
+    try: # if phyiscal file was missing
+        os.remove(file.file_path)
+        db_sess.delete(file)
+        db_sess.commit()
+        flash("File deleted successfully", "alert alert-success")
+        return redirect(url_for("show_report", id=rid))
+    except FileNotFoundError:
+        flash("File not found", "alert alert-danger")
+        return redirect(url_for("show_report", id=rid))
 
 ################################## Reports #####################################
 @app.route('/reports')
 @require_login
 def reports():
-    reports = load_user_reports(session.get("uid"))
+    reports = load_user_reports(db_sess, session.get("uid"))
     data = []
     for col in reports:
         report_dict = {}
         report_dict['id'] = col.Report.id
         report_dict['name'] = col.Report.name
-        report_dict['desc'] = "{}...".format(col.Report.desc[:6])
-        user = load_user(col.Report.creator_id)
+        col_limit = 8
+        if len(col.Report.desc) >= col_limit:
+            report_dict['desc'] = "{}...".format(col.Report.desc[:col_limit])
+        else:
+            report_dict['desc'] = col.Report.desc
+        user = load_user(db_sess, col.Report.creator_id)
         if user:
             report_dict['creatid'] = user.User.username
         else:
             report_dict['creatid'] = "Deleted"
-        report_dict['group'] = load_group(col.Report.group_id).group_name
-        report_dict['nfiles'] = len(load_report_files(col.Report.id))
+        report_dict['group'] = load_group(db_sess, col.Report.group_id).group_name
+        report_dict['nfiles'] = len(load_report_files(db_sess, col.Report.id))
         rtags = ""
-        for t in load_report_tags(col.Report.id):
+        for t in load_report_tags(db_sess, col.Report.id):
             rtags = rtags + t.Tag.tag + " "
-        report_dict['tags'] = "{}...".format(rtags[:6])
+        if len(rtags) >= col_limit:
+            report_dict['tags'] = "{}...".format(rtags[:col_limit])
+        else:
+            report_dict['tags'] = rtags
         data.append(report_dict)
     return render_template("reports.html", reports=data)
 
@@ -165,7 +178,7 @@ def reports():
 @require_login
 def show_report():
     # search through user specific reports to ensure proper permission
-    user_reports = load_user_reports(session.get("uid"))
+    user_reports = load_user_reports(db_sess, session.get("uid"))
     try:
         req_rid = int(request.args.get('id'))
     except ValueError:
@@ -181,23 +194,23 @@ def show_report():
     report_dict['id'] = report.id
     report_dict['name'] = report.name
     report_dict['desc'] = report.desc
-    user = load_user(col.Report.creator_id)
+    user = load_user(db_sess, col.Report.creator_id)
     if user:
         report_dict['creatid'] = user.User.username
     else:
         report_dict['creatid'] = "Deleted"
     report_dict['group_id'] = report.group_id
-    report_dict['group'] = load_group(report.group_id).group_name
-    report_dict['files'] = [(file.id, os.path.basename(file.file_path)) for file in load_report_files(report.id)]
+    report_dict['group'] = load_group(db_sess, report.group_id).group_name
+    report_dict['files'] = [(file.id, os.path.basename(file.file_path)) for file in load_report_files(db_sess, report.id)]
     report_dict['tags'] = []
-    for t in load_report_tags(report.id):
+    for t in load_report_tags(db_sess, report.id):
         report_dict['tags'].append(t.Tag)
-    groups = [r.Group for r in load_user_groups(session.get("uid"))]
+    groups = [r.Group for r in load_user_groups(db_sess, session.get("uid"))]
     tags = []
     # flag the tags that the report belongs to
-    for tag in load_all_tags():
+    for tag in load_all_tags(db_sess):
         belongs_to = False
-        for rtag in load_report_tags(report.id):
+        for rtag in load_report_tags(db_sess, report.id):
             if tag.id == rtag.Tag.id:
                 belongs_to = True
                 break
@@ -212,7 +225,7 @@ def update_report():
     if not is_report_name_valid(request.form['name']) or not is_report_desc_valid(request.form['desc']):
         flash("Invalid name/description input", "alert alert-danger")
         return redirect(url_for("show_report", id=request.form["id"]))
-    allowed_groups = [str(col.Group.id) for col in load_user_groups(session.get("uid"))]
+    allowed_groups = [str(col.Group.id) for col in load_user_groups(db_sess, session.get("uid"))]
     if request.form['group'] not in allowed_groups:
         flash("Invalid group input", "alert alert-danger")
         return redirect(url_for("show_report", id=request.form["id"]))
@@ -221,7 +234,7 @@ def update_report():
     except ValueError:
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
     report = None
-    for col in load_user_reports(session.get("uid")):
+    for col in load_user_reports(db_sess, session.get("uid")):
         if req_rid == col.Report.id:
             report = col.Report
             break
@@ -242,29 +255,35 @@ def update_report():
         else:
             filename = secure_filename(file.filename)
             mt = filename.split(".").pop() # media type
-            ####################################### INSERT TIMESTAMP BEFORE EXT
             upload_path = os.path.join(UPLOAD_FILES_BASE_DIR, mt)
+            # inserting timestamp before file's extension
+            filename = "{}-{}{}".format(filename[:len(filename) - 4], time.time(), filename[len(filename) - 4:])
             full_file_path = os.path.join(upload_path, filename)
-            file.save(full_file_path)
-            db_sess.add(File(full_file_path, report.id))
+            if is_file_path_valid(full_file_path):
+                file.save(full_file_path)
+                db_sess.add(File(full_file_path, report.id))
+            else:
+                flash("File name/s too long", "alert alert-danger")
+                return redirect(url_for("show_report", id=request.form['id']))
     # handling tags
-    report_tag_ids = [col.Tag.id for col in load_report_tags(request.form['id'])]
-    all_tag_ids = [t.id for t in load_all_tags()]
+    report_tag_ids = [col.Tag.id for col in load_report_tags(db_sess, request.form['id'])]
+    all_tag_ids = [t.id for t in load_all_tags(db_sess)]
     for posted_tag in request.form.getlist("tags"): # check tags to be added
-        if posted_tag in all_tag_ids and not posted_tag in report_tag_ids:
-            try:
-                db_sess.add(Report_tags(request.form['id'], posted_tag))
-            except ValueError:
-                flash("Invalid tag input", "alert alert-danger")
-                return redirect(url_for('show_report', id=request.form['id']))
-    # for tag_id in all_tag_ids: # check tags to be removed
-    #     if not tag_id in request.form.getlist("tags") and tag_id in report_tag_ids:
-    #         report_tag = (db_sess.query(Report_tags)
-    #                     .filter(Report_tags.report_id == request.form['id'])
-    #                     .filter(Report_tags.tag_id == tag_id)
-    #                     .first())
-    #         db_sess.delete(report_tag)
-    # db_sess.update(report)
+        try:
+            posted_tag = int(posted_tag)
+            if posted_tag in all_tag_ids and not posted_tag in report_tag_ids:
+                    db_sess.add(Report_tags(report.id, posted_tag))
+        except ValueError:
+            flash("Invalid tag input", "alert alert-danger")
+            return redirect(url_for('show_report', id=request.form['id']))
+    for tag_id in all_tag_ids: # check tags to be removed
+        if not str(tag_id) in request.form.getlist("tags") and tag_id in report_tag_ids:
+            report_tag = (db_sess.query(Report_tags)
+                        .filter(Report_tags.report_id == request.form['id'])
+                        .filter(Report_tags.tag_id == tag_id)
+                        .first())
+            db_sess.delete(report_tag)
+    db_sess.commit()
     return flash_and_redirect("Report updated successfully", "alert alert-success", "reports")
 
 @app.route('/add_report')
@@ -275,6 +294,7 @@ def add_report():
 @app.route('/delete_report', methods=['GET'])
 @require_login
 def delete_report():
+    # TODO delete actual files related to the report
     # group = load_group(request.args.get('id'))
     # if not group:
     #     flash("Group not found", "alert alert-danger")
@@ -294,13 +314,13 @@ def delete_report():
 @require_admin_access
 @require_login
 def groups():
-    return render_template("groups.html", groups=load_all_groups())
+    return render_template("groups.html", groups=load_all_groups(db_sess))
 
 @app.route('/group', methods=['GET'])
 @require_admin_access
 @require_login
 def show_group():
-    group = load_group(request.args.get('id'))
+    group = load_group(db_sess, request.args.get('id'))
     if not group:
         return flash_and_redirect("Group not found", "alert alert-danger", "groups")
     return render_template("group.html", group=group)
@@ -314,7 +334,7 @@ def update_group():
     if not is_group_name_valid(request.form['name']):
         flash("Invalid input", "alert alert-danger")
         return redirect(url_for('show_group', id=request.form['id']))
-    group = load_group(request.form['id'])
+    group = load_group(db_sess, request.form['id'])
     group.group_name = request.form['name']
     try:
         db_sess.commit()
@@ -345,7 +365,7 @@ def add_group():
 @require_admin_access
 @require_login
 def delete_group():
-    group = load_group(request.args.get('id'))
+    group = load_group(db_sess, request.args.get('id'))
     if not group:
         return flash_and_redirect("Group not found", "alert alert-danger", "groups")
     try:
@@ -371,7 +391,7 @@ def users():
         user_dict['user_id'] = col.User.id
         user_dict['username'] = col.User.username
         user_dict['user_role'] = col.Role.role
-        user_dict['group_count'] = len(load_user_groups(col.User.id))
+        user_dict['group_count'] = len(load_user_groups(db_sess, col.User.id))
         users.append(user_dict)
     return render_template("users.html", users=users)
 
@@ -383,7 +403,7 @@ def add_user(): # TODO ensure users belong to at least one group
     data = {}
     data['roles'] = Roles_enum
     groups = []
-    for group in load_all_groups():
+    for group in load_all_groups(db_sess):
         user_in_group = False
         groups.append((group.id, group.group_name, user_in_group))
     data['groups'] = groups
@@ -422,11 +442,11 @@ def add_user(): # TODO ensure users belong to at least one group
 @require_login
 def show_user():
     user_id = request.args.get('id')
-    user = load_user(user_id)
+    user = load_user(db_sess, user_id)
     if not user:
         return flash_and_redirect("User not found", "alert alert-danger", "users")
-    user_groups = load_user_groups(user_id)
-    group_results = load_all_groups()
+    user_groups = load_user_groups(db_sess, user_id)
+    group_results = load_all_groups(db_sess)
     data = {}
     data['user'] = user
     data['roles'] = Roles_enum
@@ -452,11 +472,11 @@ def update_user():
         flash("Invalid input", "alert alert-danger")
         return redirect(url_for('show_user', id=request.form['id']))
     user_id = request.form['id']
-    result = load_user(user_id)
+    result = load_user(db_sess, user_id)
     if not result:
         return flash_and_redirect("User not found", "alert alert-danger", "users")
     # create a list of group ids that the user belongs to
-    user_groups_list = [col.Group.id for col in load_user_groups(user_id)]
+    user_groups_list = [col.Group.id for col in load_user_groups(db_sess, user_id)]
 
     for posted_g_id in request.form.getlist('group'): # check groups to be added
         try:
@@ -465,8 +485,8 @@ def update_user():
         except ValueError:
             flash("Invalid group input", "alert alert-danger")
             return redirect(url_for('show_user', id=request.form['id']))
-    user_groups = load_user_groups(user_id) # get updated user groups
-    for group in load_all_groups(): # check groups to be removed
+    user_groups = load_user_groups(db_sess, user_id) # get updated user groups
+    for group in load_all_groups(db_sess): # check groups to be removed
         if not str(group.id) in request.form.getlist('group'):
             group_to_delete = (db_sess.query(User_groups)
                 .filter(User_groups.user_id == user_id)
@@ -479,7 +499,7 @@ def update_user():
                 return redirect(url_for('show_user', id=user_id))
             elif len(user_groups) > 1:  # remove user from this group
                 db_sess.delete(group_to_delete)
-                user_groups = load_user_groups(user_id) # get updated user groups
+                user_groups = load_user_groups(db_sess, user_id) # get updated user groups
     result.User.username = request.form['username']
     result.User.role_id = request.form['role']
     try:
@@ -494,7 +514,7 @@ def update_user():
 @require_admin_access
 @require_login
 def delete_user():
-    result = load_user(request.args.get('id'))
+    result = load_user(db_sess, request.args.get('id'))
     if not result:
         flash("User not found", "alert alert-danger")
         return redirect(url_for('users'))

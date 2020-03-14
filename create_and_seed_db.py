@@ -74,7 +74,7 @@ sess.commit()
 ################################################################################
 # seed dummy reports
 
-sample_names = ["CVOID-19", "Jupiter Landing!", "Mohammed Ali vs Mike Tyson", "Albaik Goes International",
+sample_names = ["COVID-19", "Jupiter Landing!", "Mohammed Ali vs Mike Tyson", "Albaik Goes International",
                 "One Piece Airs Last Episode", "Blizzard Releases TBC", "Stackoverflow Goes Mobile!"]
 sample_desc = "Lorem ipsum dolor sit amet." * 6
 
