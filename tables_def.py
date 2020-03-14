@@ -136,16 +136,14 @@ class Report(Base):
     name           = Column(String(60))
     desc           = Column(String(200))
     creator_id     = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
-    last_editor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     group_id       = Column(Integer, ForeignKey("groups_table.id", ondelete="CASCADE"))
 
     #---------------------------------------------------------------------------
-    def __init__(self, name, desc, creator_id, last_editor_id, group_id):
+    def __init__(self, name, desc, creator_id, group_id):
         """"""
         self.name           = name
         self.desc           = desc
         self.creator_id     = creator_id
-        self.last_editor_id = last_editor_id
         self.group_id       = group_id
 
 ################################################################################
@@ -154,15 +152,13 @@ class File(Base):
     __tablename__ = "files"
 
     id         = Column(Integer, primary_key=True, autoincrement=True)
-    name       = Column(String(40))
-    file_path  = Column(String(40))
+    file_path  = Column(String(80))
     report_id  = Column(Integer, ForeignKey("reports.id", ondelete="CASCADE"))
     media_type = Column(Integer, ForeignKey("media_types.id"))
 
     #---------------------------------------------------------------------------
-    def __init__(self, name, file_path, report_id, media_type):
+    def __init__(self, file_path, report_id, media_type):
         """"""
-        self.name       = name
         self.file_path  = file_path
         self.report_id  = report_id
         self.media_type = media_type

@@ -2,11 +2,13 @@ from __init__ import app, db_engine
 from flask import render_template, request, url_for, session, flash, redirect, send_file
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
+from werkzeug.utils import secure_filename
 from tables_def import *
 from functools import wraps
 from validators import *
 from enums import *
 import bcrypt
+import os
 
 db_session = sessionmaker(bind=db_engine)
 db_sess = db_session()
@@ -129,7 +131,7 @@ def download_file():
     try:
         return send_file(file.file_path, as_attachment=True)
     except FileNotFoundError:
-        return redirect(url_for("not_found"))
+        return flash_and_redirect("File not found", "alert alert-danger", "reports")
 
 ################################## Reports #####################################
 @app.route('/reports')
@@ -147,11 +149,6 @@ def reports():
             report_dict['creatid'] = user.User.username
         else:
             report_dict['creatid'] = "Deleted"
-        user = load_user(col.Report.last_editor_id)
-        if user:
-            report_dict['editid'] = user.User.username
-        else:
-            report_dict['editid'] = "Deleted"
         report_dict['group'] = load_group(col.Report.group_id).group_name
         report_dict['nfiles'] = len(load_report_files(col.Report.id))
         rtags = ""
@@ -160,6 +157,14 @@ def reports():
         report_dict['tags'] = "{}...".format(rtags[:6])
         data.append(report_dict)
     return render_template("reports.html", reports=data)
+
+@app.route('/upload-file')
+@require_login
+def upload_file():
+    print(request.form)
+    # if not request.form['name']:
+    #     flash("Invalid file name or extension", "alert alert-danger")
+    #     return redirect(url_for())
 
 @app.route('/report', methods=['GET'])
 @require_login
@@ -186,14 +191,9 @@ def show_report():
         report_dict['creatid'] = user.User.username
     else:
         report_dict['creatid'] = "Deleted"
-    user = load_user(col.Report.last_editor_id)
-    if user:
-        report_dict['editid'] = user.User.username
-    else:
-        report_dict['editid'] = "Deleted"
     report_dict['group_id'] = report.group_id
     report_dict['group'] = load_group(report.group_id).group_name
-    report_dict['files'] = [file for file in load_report_files(report.id)]
+    report_dict['files'] = [(file.id, os.path.basename(file.file_path)) for file in load_report_files(report.id)]
     report_dict['tags'] = []
     for t in load_report_tags(report.id):
         report_dict['tags'].append(t.Tag)
@@ -212,7 +212,21 @@ def show_report():
 @app.route('/report', methods=['POST'])
 @require_login
 def update_report():
-    return render_template("report.html")
+    if not request.form['id']:
+        return flash_and_redirect("Report not found", "alert alert-danger", "reports")
+    if not is_report_name_valid(request.form['name']) or not is_report_desc_valid(request.form['desc']):
+        flash("Invalid name/description input", "alert alert-danger")
+        return redirect(url_for("show_report", id=request.form["id"]))
+    allowed_groups = [str(col.Group.id) for col in load_user_groups(session.get("uid"))]
+    if request.form['group'] not in allowed_groups:
+        flash("Invalid group input", "alert alert-danger")
+        return redirect(url_for("show_report", id=request.form["id"]))
+    report = db_sess.query(Report).filter(Report.id == request.form['id'])
+    report.name = request.form['name']
+    report.desc = request.form['desc']
+    report.group_id = request.form['group']
+
+    return flash_and_redirect("Report updated successfully", "alert alert-success", "reports")
 
 @app.route('/add_report')
 @require_login
@@ -258,7 +272,7 @@ def show_group():
 def update_group():
     if not request.form['id']:
         return flash_and_redirect("Group not found", "alert alert-danger", "groups")
-    if not request.form['name'] or not is_group_name_valid(request.form['name']):
+    if not is_group_name_valid(request.form['name']):
         flash("Invalid input", "alert alert-danger")
         return redirect(url_for('show_group', id=request.form['id']))
     group = load_group(request.form['id'])
@@ -335,8 +349,7 @@ def add_user(): # TODO ensure users belong to at least one group
         groups.append((group.id, group.group_name, user_in_group))
     data['groups'] = groups
     if request.method == 'POST':
-        if (not request.form['username'] or not is_username_valid(request.form['username'])
-            or not is_password_valid(request.form['password1'])):
+        if (not is_username_valid(request.form['username']) or not is_password_valid(request.form['password1'])):
             flash("Invalid input", "alert alert-danger")
             return render_template("add_user.html", data=data)
         if request.form["password1"] != request.form['password2']:
@@ -358,8 +371,7 @@ def add_user(): # TODO ensure users belong to at least one group
         for posted_g_id in request.form.getlist('group'):
             try:
                 db_sess.add(User_groups(posted_g_id, new_user.id))  # add user to this group
-            except Exception as e:
-                print(e)
+            except ValueError:
                 flash("Invalid group input", "alert alert-danger")
                 return render_template("add_user.html", data=data)
         db_sess.commit() # add new user to groups in db
@@ -397,23 +409,21 @@ def show_user():
 def update_user():
     if not request.form['id']:
         return flash_and_redirect("User not found", "alert alert-danger", "users")
-    if not request.form['username'] or not is_username_valid(request.form['username']):
+    if  not is_username_valid(request.form['username']):
         flash("Invalid input", "alert alert-danger")
         return redirect(url_for('show_user', id=request.form['id']))
     user_id = request.form['id']
     result = load_user(user_id)
     if not result:
         return flash_and_redirect("User not found", "alert alert-danger", "users")
-    user_groups = load_user_groups(user_id)
-    user_groups_list = []
-    for col in user_groups: # create a list of group ids that the user belongs to
-        user_groups_list.append(col.Group.id)
+    # create a list of group ids that the user belongs to
+    user_groups_list = [col.Group.id for col in load_user_groups(user_id)]
 
     for posted_g_id in request.form.getlist('group'): # check groups to be added
         try:
             if not int(posted_g_id) in user_groups_list: # add user to this group
                 db_sess.add(User_groups(posted_g_id, user_id))
-        except:
+        except ValueError:
             flash("Invalid group input", "alert alert-danger")
             return redirect(url_for('show_user', id=request.form['id']))
     user_groups = load_user_groups(user_id) # get updated user groups

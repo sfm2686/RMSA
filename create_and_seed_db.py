@@ -87,12 +87,11 @@ sample_names = ["19-NCOV", "Jupiter Landing!", "Mohammed Ali vs Mike Tyson", "Al
 sample_desc = "Lorem ipsum dolor sit amet." * 6
 
 report_ids = []
-for i in range(0, 20):
+for i in range(0, 40):
     name = random.choice(sample_names)
     creator_id = random.choice(users_ids)
-    last_editor_id = random.choice(users_ids)
     group_id = random.choice(groups_ids)
-    report = Report(name, sample_desc, creator_id, last_editor_id, group_id)
+    report = Report(name, sample_desc, creator_id, group_id)
     sess.add(report)
     sess.commit()
     for tid in tag_ids:
@@ -120,22 +119,22 @@ sample_files = [(os.path.join(sample_data_dir, "txt-file.txt"), Media_types_enum
                 ,(os.path.join(sample_data_dir, "mp3-file.mp3"), Media_types_enum.mp3)
                 ,(os.path.join(sample_data_dir, "mp4-file.mp4"), Media_types_enum.mp4)]
 
+sample_file_names = ["Jupiter landing", "Albaik's Best Meal", "Best Place to Visit",
+                    "Blizzard Ent.", "One Piece", "Best Webapp", "19-NCOV Shocking Facts!",
+                    "Stackoverflow", "Clean Code Example", "Super Classified", "Eyes Only!"]
 new_files = []
-for i in range(0, 40):
+for i in range(0, 100):
     file = random.choice(sample_files)
     file_path = file[0]
     mt = file[1] # media type
-    new_file_name = "{}.{}".format(time.time(), mt.name)
+    new_file_name = "{}-{}.{}".format(random.choice(sample_file_names), time.time(), mt.name)
     dest = os.path.join(data_storage_path, os.path.join(mt.name, new_file_name))
     copyfile(file_path, dest)
     new_files.append((dest, mt))
 
-sample_file_names = ["Jupiter landing video", "Albaik's Best Meal", "Best Place to Visit",
-                    "Blizzard Ent.", "One Piece", "Best Webapp", "19-NCOV Shocking Facts!",
-                    "Stackoverflow", "Clean Code Example", "Super Classified", "Eyes Only!"]
 
-for nf in new_files:
-    file = File(random.choice(sample_file_names), nf[0], random.choice(report_ids), nf[1].value)
+for file_path, media_type in new_files:
+    file = File(file_path, random.choice(report_ids), media_type.value)
     sess.add(file)
 
 sess.commit()
