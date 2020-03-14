@@ -62,14 +62,6 @@ for g in ["Saudi Arabia", "Germany", "UK", "Brazil", "Hungary", "Russia", "Turke
 
 sess.commit()
 ################################################################################
-# seed media types data
-
-for mt in Media_types_enum:
-    media_type = Media_type(mt.value, mt.name)
-    sess.add(media_type)
-
-sess.commit()
-################################################################################
 # seed tags data
 
 tag_ids = []
@@ -82,7 +74,7 @@ sess.commit()
 ################################################################################
 # seed dummy reports
 
-sample_names = ["19-NCOV", "Jupiter Landing!", "Mohammed Ali vs Mike Tyson", "Albaik Goes International",
+sample_names = ["CVOID-19", "Jupiter Landing!", "Mohammed Ali vs Mike Tyson", "Albaik Goes International",
                 "One Piece Airs Last Episode", "Blizzard Releases TBC", "Stackoverflow Goes Mobile!"]
 sample_desc = "Lorem ipsum dolor sit amet." * 6
 
@@ -113,7 +105,7 @@ for mt in Media_types_enum:
     for file in glob.glob("{}/*.{}".format(os.path.join(data_storage_path, mt.name), mt.name)):
         os.remove(file)
 
-# generate dummy files and associate them with randdomly selected reports
+# generate new ummy files and associate them with randdomly selected reports
 sample_files = [(os.path.join(sample_data_dir, "txt-file.txt"), Media_types_enum.txt)
                 ,(os.path.join(sample_data_dir, "png-file.png"), Media_types_enum.png)
                 ,(os.path.join(sample_data_dir, "mp3-file.mp3"), Media_types_enum.mp3)
@@ -134,7 +126,7 @@ for i in range(0, 100):
 
 
 for file_path, media_type in new_files:
-    file = File(file_path, random.choice(report_ids), media_type.value)
+    file = File(file_path, random.choice(report_ids))
     sess.add(file)
 
 sess.commit()

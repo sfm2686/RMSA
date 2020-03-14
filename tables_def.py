@@ -76,23 +76,23 @@ class User_groups(Base):
         self.group_id = group_id
         self.user_id  = user_id
 
-################################################################################
-class Media_type(Base):
-    """"""
-    __tablename__ = "media_types"
-
-    id   = Column(Integer, primary_key=True)
-    type = Column(String(20))
-
-    __table_args__ = (
-        UniqueConstraint('type'),
-        )
-
-    #---------------------------------------------------------------------------
-    def __init__(self, id, type):
-        """"""
-        self.id   = id
-        self.type = type
+# ################################################################################
+# class Media_type(Base):
+#     """"""
+#     __tablename__ = "media_types"
+#
+#     id   = Column(Integer, primary_key=True)
+#     type = Column(String(20))
+#
+#     __table_args__ = (
+#         UniqueConstraint('type'),
+#         )
+#
+#     #---------------------------------------------------------------------------
+#     def __init__(self, id, type):
+#         """"""
+#         self.id   = id
+#         self.type = type
 
 ################################################################################
 class Tag(Base):
@@ -154,11 +154,10 @@ class File(Base):
     id         = Column(Integer, primary_key=True, autoincrement=True)
     file_path  = Column(String(80))
     report_id  = Column(Integer, ForeignKey("reports.id", ondelete="CASCADE"))
-    media_type = Column(Integer, ForeignKey("media_types.id"))
+    # media_type = Column(Integer, ForeignKey("media_types.id"))
 
     #---------------------------------------------------------------------------
-    def __init__(self, file_path, report_id, media_type):
+    def __init__(self, file_path, report_id):
         """"""
         self.file_path  = file_path
         self.report_id  = report_id
-        self.media_type = media_type

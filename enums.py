@@ -9,6 +9,7 @@ class Media_types_enum(Enum):
     png = 2
     mp3 = 3
     mp4 = 4
+    pdf = 5
 
 class Tags_enum(Enum):
     Technology = 1

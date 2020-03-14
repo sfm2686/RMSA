@@ -9,6 +9,9 @@ from validators import *
 from enums import *
 import bcrypt
 import os
+import time
+
+UPLOAD_FILES_BASE_DIR = 'media-storage'
 
 db_session = sessionmaker(bind=db_engine)
 db_sess = db_session()
@@ -158,14 +161,6 @@ def reports():
         data.append(report_dict)
     return render_template("reports.html", reports=data)
 
-@app.route('/upload-file')
-@require_login
-def upload_file():
-    print(request.form)
-    # if not request.form['name']:
-    #     flash("Invalid file name or extension", "alert alert-danger")
-    #     return redirect(url_for())
-
 @app.route('/report', methods=['GET'])
 @require_login
 def show_report():
@@ -221,11 +216,55 @@ def update_report():
     if request.form['group'] not in allowed_groups:
         flash("Invalid group input", "alert alert-danger")
         return redirect(url_for("show_report", id=request.form["id"]))
-    report = db_sess.query(Report).filter(Report.id == request.form['id'])
+    try:
+        req_rid = int(request.args.get('id'))
+    except ValueError:
+        return flash_and_redirect("Report not found", "alert alert-danger", "reports")
+    report = None
+    for col in load_user_reports(session.get("uid")):
+        if req_rid == col.Report.id:
+            report = col.Report
+            break
+    if not report:
+        return flash_and_redirect("Report not found", "alert alert-danger", "reports")
     report.name = request.form['name']
     report.desc = request.form['desc']
     report.group_id = request.form['group']
-
+    db_sess.commit() # save updated report
+    # handling files
+    files = request.files.to_dict(flat=False)['file']
+    for file in files:
+        if not file:
+            continue
+        if not is_filename_valid(file.filename):
+            flash("Invalid file name or extension", "alert alert-danger")
+            return redirect(url_for("show_report", id=request.form["id"]))
+        else:
+            filename = secure_filename(file.filename)
+            mt = filename.split(".").pop() # media type
+            ####################################### INSERT TIMESTAMP BEFORE EXT
+            upload_path = os.path.join(UPLOAD_FILES_BASE_DIR, mt)
+            full_file_path = os.path.join(upload_path, filename)
+            file.save(full_file_path)
+            db_sess.add(File(full_file_path, report.id))
+    # handling tags
+    report_tag_ids = [col.Tag.id for col in load_report_tags(request.form['id'])]
+    all_tag_ids = [t.id for t in load_all_tags()]
+    for posted_tag in request.form.getlist("tags"): # check tags to be added
+        if posted_tag in all_tag_ids and not posted_tag in report_tag_ids:
+            try:
+                db_sess.add(Report_tags(request.form['id'], posted_tag))
+            except ValueError:
+                flash("Invalid tag input", "alert alert-danger")
+                return redirect(url_for('show_report', id=request.form['id']))
+    # for tag_id in all_tag_ids: # check tags to be removed
+    #     if not tag_id in request.form.getlist("tags") and tag_id in report_tag_ids:
+    #         report_tag = (db_sess.query(Report_tags)
+    #                     .filter(Report_tags.report_id == request.form['id'])
+    #                     .filter(Report_tags.tag_id == tag_id)
+    #                     .first())
+    #         db_sess.delete(report_tag)
+    # db_sess.update(report)
     return flash_and_redirect("Report updated successfully", "alert alert-success", "reports")
 
 @app.route('/add_report')
@@ -440,7 +479,6 @@ def update_user():
                 return redirect(url_for('show_user', id=user_id))
             elif len(user_groups) > 1:  # remove user from this group
                 db_sess.delete(group_to_delete)
-                print(group_to_delete)
                 user_groups = load_user_groups(user_id) # get updated user groups
     result.User.username = request.form['username']
     result.User.role_id = request.form['role']

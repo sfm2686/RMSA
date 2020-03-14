@@ -27,5 +27,5 @@ def is_filename_valid(name):
     # buidling '.ext1|.ext2...etc' string from allowed media types enum
     allowed_exts = ".|".join([e.name for e in Media_types_enum])
     allowed_exts = "." + allowed_exts
-    regex = re.compile("(^[\W\w\s]+\.[{}]{3}$".format(allowed_exts))
+    regex = re.compile("^[\W\w\s]+\.[%s]{3}$" % allowed_exts)
     return regex.match(name)
