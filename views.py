@@ -3,6 +3,7 @@ from flask import render_template, request, url_for, session, flash, redirect, s
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
+from sqlalchemy import or_
 from functools import wraps
 from tables_def import *
 from validators import *
@@ -50,33 +51,33 @@ def require_login(endpoint):
 ################################ Endpoints #####################################
 ################################################################################
 # TODO add csrf token
-# @app.route('/', methods=['GET', 'POST'])
-# def login():
-#     if request.method == 'POST':
-#         if not request.form['username'] or not request.form['password']:
-#             return flash_and_redirect("Please enter your username and password", "alert alert-danger", "login")
-#         post_username = request.form['username']
-#         post_password = request.form['password']
-#         user = db_sess.query(User).filter_by(username=post_username).first()
-#         if user and bcrypt.checkpw(post_password.encode("utf-8"), user.password.encode("utf-8")):
-#             session["loggedin"] = True
-#             session["has_admin_access"] = Roles_enum.ADMIN.value == user.role_id
-#             session["uid"] = user.id
-#             return redirect(url_for('reports'))
-#         else:
-#             return flash_and_redirect("Invalid username or password", "alert alert-danger", "login")
-#
-#     return render_template("login.html")
-
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        session["loggedin"] = True
-        session["has_admin_access"] = True
-        session["uid"] = 1
-        return redirect(url_for('reports'))
+        if not request.form['username'] or not request.form['password']:
+            return flash_and_redirect("Please enter your username and password", "alert alert-danger", "login")
+        post_username = request.form['username']
+        post_password = request.form['password']
+        user = db_sess.query(User).filter_by(username=post_username).first()
+        if user and bcrypt.checkpw(post_password.encode("utf-8"), user.password.encode("utf-8")):
+            session["loggedin"] = True
+            session["has_admin_access"] = Roles_enum.ADMIN.value == user.role_id
+            session["uid"] = user.id
+            return redirect(url_for('reports'))
+        else:
+            return flash_and_redirect("Invalid username or password", "alert alert-danger", "login")
 
     return render_template("login.html")
+
+# @app.route('/', methods=['GET', 'POST'])
+# def login():
+#     if request.method == 'POST':
+#         session["loggedin"] = True
+#         session["has_admin_access"] = True
+#         session["uid"] = 1
+#         return redirect(url_for('search'))
+#
+#     return render_template("login.html")
 
 @app.route('/logout')
 @require_login
@@ -87,7 +88,61 @@ def logout():
 @app.route('/index')
 @require_login
 def index():
-    return render_template("index.html")
+    user = load_user(db_sess, session.get("uid")).User
+    data = {'username': user.username}
+    user_role = "Admin" if user.role_id == Roles_enum.ADMIN.value else "User"
+    data['role'] = user_role
+    return render_template("index.html", data=data)
+
+@app.route('/search', methods=['POST', 'GET'])
+@require_login
+def search():
+    if request.method == 'POST':
+        q = request.form['search']
+        search_results = (db_sess.query(Report, User, User_groups, Group, Tag, Report_tags)
+                            .filter(Group.id == Report.group_id)
+                            .filter(Report_tags.tag_id == Tag.id)
+                            .filter(Report_tags.report_id == Report.id)
+                            .filter(User.id == Report.creator_id)
+                            .filter(User_groups.user_id == session.get("uid"))
+                            .filter(User_groups.group_id == Group.id)
+                            .filter(or_(Report.name.like("%{}%".format(q)),
+                                        Report.desc.like("%{}%".format(q)),
+                                        Tag.tag.like("%{}%".format(q)),
+                                        Group.group_name.like("%{}%".format(q)),
+                                        User.username.like("%{}%".format(q))))
+                            .all())
+        reports = []
+        ids_set = set()
+        for col in search_results:
+            if col.Report.id in ids_set:
+                continue
+            ids_set.add(col.Report.id)
+            report_dict = {}
+            report_dict['id'] = col.Report.id
+            report_dict['name'] = col.Report.name
+            col_limit = 10
+            if len(col.Report.desc) >= col_limit:
+                report_dict['desc'] = "{}...".format(col.Report.desc[:col_limit])
+            else:
+                report_dict['desc'] = col.Report.desc
+            user = load_user(db_sess, col.Report.creator_id)
+            if user:
+                report_dict['creatid'] = user.User.username
+            else:
+                report_dict['creatid'] = "Deleted"
+            report_dict['group'] = col.Group.group_name
+            report_dict['nfiles'] = len(load_report_files(db_sess, col.Report.id))
+            rtags = ""
+            for t in load_report_tags(db_sess, col.Report.id):
+                rtags = rtags + t.Tag.tag + " "
+            if len(rtags) >= col_limit:
+                report_dict['tags'] = "{}...".format(rtags[:col_limit])
+            else:
+                report_dict['tags'] = rtags
+            reports.append(report_dict)
+        return render_template("search.html", submitted=True, reports=reports)
+    return render_template("search.html", submitted=False)
 
 ################################### FILES ######################################
 
