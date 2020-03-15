@@ -3,8 +3,8 @@ from flask import render_template, request, url_for, session, flash, redirect, s
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
-from tables_def import *
 from functools import wraps
+from tables_def import *
 from validators import *
 from enums import *
 from db_helpers import *
@@ -120,7 +120,6 @@ def download_file():
 @app.route('/delete-file')
 @require_login
 def delete_file():
-    print("FUCKING CALLED")
     try: # missing or wrong data type input
         rid = int(request.args.get("report_id"))
         fid = int(request.args.get("file_id"))
@@ -156,7 +155,7 @@ def reports():
         report_dict = {}
         report_dict['id'] = col.Report.id
         report_dict['name'] = col.Report.name
-        col_limit = 8
+        col_limit = 10
         if len(col.Report.desc) >= col_limit:
             report_dict['desc'] = "{}...".format(col.Report.desc[:col_limit])
         else:
@@ -210,8 +209,8 @@ def show_report():
     for t in load_report_tags(db_sess, report.id):
         report_dict['tags'].append(t.Tag)
     groups = [r.Group for r in load_user_groups(db_sess, session.get("uid"))]
-    tags = []
     # flag the tags that the report belongs to
+    tags = []
     for tag in load_all_tags(db_sess):
         belongs_to = False
         for rtag in load_report_tags(db_sess, report.id):
@@ -291,10 +290,54 @@ def update_report():
     db_sess.commit()
     return flash_and_redirect("Report updated successfully", "alert alert-success", "reports")
 
-@app.route('/add_report')
+@app.route('/add_report', methods=['GET', 'POST'])
 @require_login
 def add_report():
-    return render_template("add_report.html")
+    page_tags = []
+    all_tags = load_all_tags(db_sess)
+    for tag in all_tags:
+        belongs_to = False
+        page_tags.append((tag.id, tag.tag, belongs_to))
+    allowed_groups = [r.Group for r in load_user_groups(db_sess, session.get("uid"))]
+    if request.method == 'POST':
+        if not is_report_name_valid(request.form['name']) or not is_report_desc_valid(request.form['desc']):
+            return flash_and_redirect("Invalid name/desc input", "alert alert-danger", "add_report")
+        try:
+            posted_g = int(request.form['group'])
+        except ValueError: # incase the group value couldnt be casted into an int
+            return flash_and_redirect("Invalid group input", "alert alert-danger", "add_report")
+        if not posted_g or not posted_g in [g.id for g in allowed_groups]:
+            return flash_and_redirect("Invalid group input", "alert alert-danger", "add_report")
+        all_tag_ids = [str(t.id) for t in all_tags]
+        for tag in request.form.getlist("tags"):
+            if tag not in all_tag_ids:
+                return flash_and_redirect("Invalid tags input", "alert alert-danger", "add_report")
+        report = Report(request.form['name'], request.form['desc'], session.get("uid"), request.form['group'])
+        db_sess.add(report)
+        db_sess.commit()
+        # handling tags
+        for tag in request.form.getlist('tags'):
+            db_sess.add(Report_tags(report.id, tag))
+        db_sess.commit()
+        # handling files
+        files = request.files.to_dict(flat=False)['file']
+        for file in files:
+            if not file:
+                continue
+            if not is_filename_valid(file.filename):
+                return flash_and_redirect("Invalid file name or extension", "alert alert-danger", "add_report")
+            filename = secure_filename(file.filename)
+            mt = filename.split(".").pop() # media type
+            upload_path = os.path.join(UPLOAD_FILES_BASE_DIR, mt)
+            # inserting timestamp before file's extension
+            filename = "{}-{}{}".format(filename[:len(filename) - 4], time.time(), filename[len(filename) - 4:])
+            full_file_path = os.path.join(upload_path, filename)
+            if not is_file_path_valid(full_file_path):
+                return flash_and_redirect("File name/s too long", "alert alert-danger", "add_report")
+            file.save(full_file_path)
+            db_sess.add(File(full_file_path, report.id))
+        return flash_and_redirect("Report added successfully", "alert alert-success", "reports")
+    return render_template("add_report.html", groups=allowed_groups, tags=page_tags)
 
 @app.route('/delete_report', methods=['GET'])
 @require_login
@@ -407,7 +450,7 @@ def users():
 @app.route('/add_user', methods=['GET', 'POST'])
 @require_admin_access
 @require_login
-def add_user(): # TODO ensure users belong to at least one group
+def add_user():
     data = {}
     data['roles'] = Roles_enum
     groups = []
