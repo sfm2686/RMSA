@@ -50,7 +50,11 @@ sess.commit()
 # seed groups data
 
 groups_ids = []
-for g in ["Saudi Arabia", "Germany", "UK", "Brazil", "Hungary", "Russia", "Turkey", "Greece", "India", "General"]:
+sample_groups = ["Saudi Arabia", "Germany", "UK", "Brazil", "Hungary", "Russia", "Turkey",
+                "Greece", "India", "Spain", "United States", "Egypt", "Sudan", "Libya",
+                "Morocco", "Romania", "Portugal", "France", "Czechia", "Denmark", "Latvia",
+                "Belgium", "Ireland", "Tunisia", "Ukraine", "Estonia", "Georgia", "General"]
+for g in sample_groups:
     group = Group(g)
     sess.add(group)
     sess.commit()
@@ -75,11 +79,13 @@ sess.commit()
 # seed dummy reports
 
 sample_names = ["COVID-19", "Jupiter Landing!", "Mohammed Ali vs Mike Tyson", "Albaik Goes International",
-                "One Piece Airs Last Episode", "Blizzard Releases TBC", "Stackoverflow Goes Mobile!"]
+                "One Piece Airs Last Episode", "Blizzard Releases TBC", "Stackoverflow Goes Mobile!",
+                "Europe is in Lockdown", "Classic WOW Seeing Large Numbers", "World Shortage of Hand Sanitizers",
+                "Apple Releases iPhone 1!", "Samsung Market Value Crashes", "RMSA is to be Released March 18th 2020"]
 sample_desc = "Lorem ipsum dolor sit amet." * 6
 
 report_ids = []
-for i in range(0, 40):
+for i in range(0, 1000):
     name = random.choice(sample_names)
     creator_id = random.choice(users_ids)
     group_id = random.choice(groups_ids)
@@ -106,7 +112,8 @@ for mt in Media_types_enum:
         os.remove(file)
 
 # generate new ummy files and associate them with randdomly selected reports
-sample_files = [(os.path.join(sample_data_dir, "txt-file.txt"), Media_types_enum.txt)
+sample_files = [(os.path.join(sample_data_dir, "pdf-file.pdf"), Media_types_enum.pdf)
+                ,(os.path.join(sample_data_dir, "txt-file.txt"), Media_types_enum.txt)
                 ,(os.path.join(sample_data_dir, "png-file.png"), Media_types_enum.png)
                 ,(os.path.join(sample_data_dir, "mp3-file.mp3"), Media_types_enum.mp3)
                 ,(os.path.join(sample_data_dir, "mp4-file.mp4"), Media_types_enum.mp4)]
@@ -115,7 +122,7 @@ sample_file_names = ["Jupiter landing", "Albaik's Best Meal", "Best Place to Vis
                     "Blizzard Ent.", "One Piece", "Best Webapp", "19-NCOV Shocking Facts!",
                     "Stackoverflow", "Clean Code Example", "Super Classified", "Eyes Only!"]
 new_files = []
-for i in range(0, 100):
+for i in range(0, 2000):
     file = random.choice(sample_files)
     file_path = file[0]
     mt = file[1] # media type

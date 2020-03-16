@@ -5,11 +5,11 @@ class Roles_enum(Enum):
     USER  = 2
 
 class Media_types_enum(Enum):
-    txt = 1
-    png = 2
-    mp3 = 3
-    mp4 = 4
-    pdf = 5
+    pdf = 1
+    txt = 2
+    png = 3
+    mp3 = 4
+    mp4 = 5
 
 class Tags_enum(Enum):
     Technology = 1

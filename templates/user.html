@@ -43,13 +43,11 @@
       {% if data['groups'] %}
         <table class="table table-striped table-bordered table-hover table-condensed">
           <tr>
-            <th>Group ID</th>
             <th>Group Name</th>
             <th>Add/Remove</th>
           </tr>
           {% for g_id, g_name, user_in_group in data['groups'] %}
             <tr>
-              <td>{{ g_id }}</td>
               <td>{{ g_name }}</td>
               <td><input type="checkbox" name=group value="{{ g_id }}"
                   {% if user_in_group %}checked{% endif %}

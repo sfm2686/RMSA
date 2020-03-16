@@ -3,6 +3,7 @@ __pycache__
 *.pyc
 /*/.DS_Store
 .DS_Store
+media-storage/pdf/*.pdf
 media-storage/txt/*.txt
 media-storage/png/*.png
 media-storage/mp3/*.mp3
