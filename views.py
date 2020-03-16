@@ -50,7 +50,6 @@ def require_login(endpoint):
 ################################################################################
 ################################ Endpoints #####################################
 ################################################################################
-# TODO add csrf token
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -63,7 +62,7 @@ def login():
             session["loggedin"] = True
             session["has_admin_access"] = Roles_enum.ADMIN.value == user.role_id
             session["uid"] = user.id
-            return redirect(url_for('reports'))
+            return redirect(url_for('index'))
         else:
             return flash_and_redirect("Invalid username or password", "alert alert-danger", "login")
 
@@ -93,6 +92,7 @@ def index():
     data = {'username': user.username}
     user_role = "Admin" if user.role_id == Roles_enum.ADMIN.value else "User"
     data['role'] = user_role
+    data['groups'] = [col.Group.group_name for col in load_user_groups(db_sess, session.get("uid"))]
     return render_template("index.html", data=data)
 
 @app.route('/search', methods=['POST', 'GET'])
