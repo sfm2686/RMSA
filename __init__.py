@@ -1,10 +1,14 @@
 from flask import Flask, session
+from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import create_engine
 from sqlalchemy_utils import database_exists
 import os
 import tables_def
 
+csrf = CSRFProtect()
+
 app = Flask(__name__)
+csrf.init_app(app)
 app.config['SECRET_KEY'] = os.urandom(12).hex()
 
 db_engine = create_engine('mysql+pymysql://root:@localhost')

@@ -19,6 +19,7 @@
 
 <div class="container">
   <form action="" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <input type="hidden" class="form-control" name="id" value="{{ group.id }}">
     <label>Username</label>
     <input type="text" class="form-control" placeholder="Group name" name="name" value="{{ group.group_name }}">

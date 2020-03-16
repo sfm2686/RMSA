@@ -69,6 +69,7 @@ def login():
 
     return render_template("login.html")
 
+# dev login
 # @app.route('/', methods=['GET', 'POST'])
 # def login():
 #     if request.method == 'POST':

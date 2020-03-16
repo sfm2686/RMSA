@@ -19,6 +19,7 @@
 
   <div class="container">
     <form action="" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <input type="hidden" class="form-control" name="id" value="{{ data['user'].User.id }}">
       <label>Username</label>
       <input type="text" class="form-control" placeholder="Username" name="username" value="{{ data['user'].User.username }}">

@@ -6,6 +6,7 @@
 
   <div class="container">
     <form action="" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <label>Username</label>
       <input type="text" class="form-control" placeholder="Username" name="username">
       <br>

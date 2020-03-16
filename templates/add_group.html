@@ -6,6 +6,7 @@
 
   <div class="container">
     <form action="" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <label>Group name</label>
       <input type="text" class="form-control" placeholder="Group name" name="name">
       <br>
