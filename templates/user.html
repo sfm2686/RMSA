@@ -18,13 +18,17 @@
   </script>
 
   <div class="container">
-    <div class="alert alert-warning">Username must be between 6 and 20 characters,
-                                    Password must be between 8 and 20 characters</div>
+    <div class="alert alert-warning">User passwords cannot be updated</div>
     <form action="" method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <input type="hidden" class="form-control" name="id" value="{{ data['user'].User.id }}">
       <label>Username</label>
       <input type="text" class="form-control" placeholder="Username" name="username" value="{{ data['user'].User.username }}">
+      <ul>
+        <li>Between 6 and 20 characters</li>
+        <li>Only letters and numbers are allowed</li>
+        <li>Must be unique</li>
+      </ul>
       <br>
       <label>Role</label>
       <select class="form-control" name="role">

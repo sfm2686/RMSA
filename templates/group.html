@@ -23,6 +23,11 @@
     <input type="hidden" class="form-control" name="id" value="{{ group.id }}">
     <label>Username</label>
     <input type="text" class="form-control" placeholder="Group name" name="name" value="{{ group.group_name }}">
+    <ul>
+      <li>Between 2 and 20 characters</li>
+      <li>Only letters, numbers and spaces are allowed</li>
+      <li>Must be unique</li>
+    </ul>
     <br>
     <button type="submit" class="btn btn-default">Save</button>
   </form>

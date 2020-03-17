@@ -11,12 +11,23 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <label>Username</label>
       <input type="text" class="form-control" placeholder="Username" name="username">
+      <ul>
+        <li>Between 6 and 20 characters</li>
+        <li>Only letters and numbers are allowed</li>
+        <li>Must be unique</li>
+      </ul>
       <br>
       <label>Password</label>
       <input type="password" class="form-control" placeholder="Password" name="password1">
+      <ul>
+        <li>Between 8 and 20 characters</li>
+      </ul>
       <br>
       <label>Password Confirmation</label>
       <input type="password" class="form-control" placeholder="Password Confirmation" name="password2">
+      <ul>
+        <li>Between 8 and 20 characters</li>
+      </ul>
       <br>
       <label>Role</label>
       <select class="form-control" name="role">
