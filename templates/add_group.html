@@ -9,6 +9,9 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <label>Group name</label>
       <input type="text" class="form-control" placeholder="Group name" name="name">
+      <ul>
+        <li>Group name must be between 2 and 20 characters</li>
+      </ul>
       <br>
       <button type="submit" class="btn btn-default">Save</button>
     </form>

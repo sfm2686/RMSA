@@ -50,8 +50,8 @@ def load_report_tags(db_sess, rid):
 def load_all_tags(db_sess):
     return (db_sess.query(Tag).all())
 
-def load_search_results(db_sess, uid, q, page_size, page=0):
-    search_query = (db_sess.query(Report, User, User_groups, Group, Tag, Report_tags)
+def load_search_results(db_sess, uid, q):
+    return (db_sess.query(Report, User, User_groups, Group, Tag, Report_tags)
                         .filter(Group.id == Report.group_id)
                         .filter(Report_tags.tag_id == Tag.id)
                         .filter(Report_tags.report_id == Report.id)
@@ -62,7 +62,5 @@ def load_search_results(db_sess, uid, q, page_size, page=0):
                                     Report.desc.like("%{}%".format(q)),
                                     Tag.tag.like("%{}%".format(q)),
                                     Group.group_name.like("%{}%".format(q)),
-                                    User.username.like("%{}%".format(q)))))
-    search_query = search_query.limit(page_size)
-    search_query = search_query.offset(page * page_size)
-    return search_query.all()
+                                    User.username.like("%{}%".format(q))))
+                        .all())

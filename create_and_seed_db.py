@@ -10,13 +10,31 @@ import random
 import os
 import time
 import glob
+import sys
+
+DEFAULT_NUMBER_OF_REPORTS = 1000
+DEFAULT_NUMBER_OF_FILES = 600
+
+def log(msg):
+    print("{}: {}".format(time.strftime("%Y-%m-%d %H: %M"), msg))
+
+nreports = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_NUMBER_OF_REPORTS
+nfiles = sys.argv[2] if len(sys.argv) == 3 else DEFAULT_NUMBER_OF_FILES
+try:
+    nreports = int(nreports)
+    nfiles = int(nfiles)
+except ValueError:
+    nreports = DEFAULT_NUMBER_OF_REPORTS
+    nfiles = DEFAULT_NUMBER_OF_FILES
 
 db_engine = create_engine('mysql+pymysql://root:@localhost')
 db_engine.execute("DROP DATABASE IF EXISTS RMSA") #drop db if exists
+log("Dropped old table")
 db_engine.execute("CREATE DATABASE IF NOT EXISTS RMSA") #create db again
 db_engine.execute("USE RMSA") # select new db
 
 tables_def.Base.metadata.create_all(db_engine)
+log("Created table")
 
 Session = sessionmaker(bind=db_engine)
 sess = Session()
@@ -31,10 +49,11 @@ users_role = Role(id=Roles_enum.USER.value, role=Roles_enum.USER.name)
 sess.add(users_role)
 
 sess.commit()
+log("Adde roles")
 ################################################################################
 # seed users data
 
-user = User("sultanmira", bcrypt.hashpw(b"admin", bcrypt.gensalt()), admins_role.id)
+user = User("sultanmira", bcrypt.hashpw(b"adminadmin", bcrypt.gensalt()), admins_role.id)
 sess.add(user)
 sess.commit()
 
@@ -46,6 +65,7 @@ for userinfo in ["elonmusk", "timcook", "mohammedali", "stevewozniak", "dennisri
     users_ids.append(user.id)
 
 sess.commit()
+log("Inserted users to the database")
 ################################################################################
 # seed groups data
 
@@ -65,6 +85,7 @@ for g in sample_groups:
             sess.add(User_groups(group.id, uid))
 
 sess.commit()
+log("Inserted groups to the database")
 ################################################################################
 # seed tags data
 
@@ -75,6 +96,7 @@ for tag in Tags_enum:
     tag_ids.append(tag.id)
 
 sess.commit()
+log("Inserted tags to the database")
 ################################################################################
 # seed dummy reports
 
@@ -85,7 +107,7 @@ sample_names = ["COVID-19", "Jupiter Landing!", "Mohammed Ali vs Mike Tyson", "A
 sample_desc = "Lorem ipsum dolor sit amet." * 6
 
 report_ids = []
-for i in range(0, 6000):
+for i in range(0, nreports):
     name = random.choice(sample_names)
     creator_id = random.choice(users_ids)
     group_id = random.choice(groups_ids)
@@ -99,6 +121,7 @@ for i in range(0, 6000):
     sess.commit()
     report_ids.append(report.id)
 
+log("Inserted {} reports to the database".format(nreports))
 ################################################################################
 # seed dummy files
 
@@ -122,7 +145,7 @@ sample_file_names = ["Jupiter landing", "Albaik's Best Meal", "Best Place to Vis
                     "Blizzard Ent.", "One Piece", "Best Webapp", "COVID-19 Shocking Facts!",
                     "Stackoverflow", "Clean Code Example", "Super Classified", "Eyes Only!"]
 new_files = []
-for i in range(0, 2000):
+for i in range(0, nfiles):
     file = random.choice(sample_files)
     file_path = file[0]
     mt = file[1] # media type
@@ -137,3 +160,4 @@ for file_path, media_type in new_files:
     sess.add(file)
 
 sess.commit()
+log("Inserted {} files to the database".format(nfiles))
