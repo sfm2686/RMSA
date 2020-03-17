@@ -3,7 +3,6 @@ from flask import render_template, request, url_for, session, flash, redirect, s
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
-from sqlalchemy import or_
 from functools import wraps
 from tables_def import *
 from validators import *
@@ -14,6 +13,7 @@ import os
 import time
 
 UPLOAD_FILES_BASE_DIR = 'media-storage'
+REPORT_PAGE_SIZE      = 20
 
 db_session = sessionmaker(bind=db_engine)
 db_sess = db_session()
@@ -50,34 +50,34 @@ def require_login(endpoint):
 ################################################################################
 ################################ Endpoints #####################################
 ################################################################################
-@app.route('/', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        if not request.form['username'] or not request.form['password']:
-            return flash_and_redirect("Please enter your username and password", "alert alert-danger", "login")
-        post_username = request.form['username']
-        post_password = request.form['password']
-        user = db_sess.query(User).filter_by(username=post_username).first()
-        if user and bcrypt.checkpw(post_password.encode("utf-8"), user.password.encode("utf-8")):
-            session["loggedin"] = True
-            session["has_admin_access"] = Roles_enum.ADMIN.value == user.role_id
-            session["uid"] = user.id
-            return redirect(url_for('index'))
-        else:
-            return flash_and_redirect("Invalid username or password", "alert alert-danger", "login")
-
-    return render_template("login.html")
-
-# dev login
 # @app.route('/', methods=['GET', 'POST'])
 # def login():
 #     if request.method == 'POST':
-#         session["loggedin"] = True
-#         session["has_admin_access"] = True
-#         session["uid"] = 1
-#         return redirect(url_for('search'))
+#         if not request.form['username'] or not request.form['password']:
+#             return flash_and_redirect("Please enter your username and password", "alert alert-danger", "login")
+#         post_username = request.form['username']
+#         post_password = request.form['password']
+#         user = db_sess.query(User).filter_by(username=post_username).first()
+#         if user and bcrypt.checkpw(post_password.encode("utf-8"), user.password.encode("utf-8")):
+#             session["loggedin"] = True
+#             session["has_admin_access"] = Roles_enum.ADMIN.value == user.role_id
+#             session["uid"] = user.id
+#             return redirect(url_for('index'))
+#         else:
+#             return flash_and_redirect("Invalid username or password", "alert alert-danger", "login")
 #
 #     return render_template("login.html")
+
+# dev login
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        session["loggedin"] = True
+        session["has_admin_access"] = True
+        session["uid"] = 1
+        return redirect(url_for('reports'))
+
+    return render_template("login.html")
 
 @app.route('/logout')
 @require_login
@@ -95,24 +95,22 @@ def index():
     data['groups'] = [col.Group.group_name for col in load_user_groups(db_sess, session.get("uid"))]
     return render_template("index.html", data=data)
 
-@app.route('/search', methods=['POST', 'GET'])
+# @app.route('/search', methods=['POST', 'GET'])
+@app.route('/search')
 @require_login
 def search():
-    if request.method == 'POST':
-        q = request.form['search']
-        search_results = (db_sess.query(Report, User, User_groups, Group, Tag, Report_tags)
-                            .filter(Group.id == Report.group_id)
-                            .filter(Report_tags.tag_id == Tag.id)
-                            .filter(Report_tags.report_id == Report.id)
-                            .filter(User.id == Report.creator_id)
-                            .filter(User_groups.user_id == session.get("uid"))
-                            .filter(User_groups.group_id == Group.id)
-                            .filter(or_(Report.name.like("%{}%".format(q)),
-                                        Report.desc.like("%{}%".format(q)),
-                                        Tag.tag.like("%{}%".format(q)),
-                                        Group.group_name.like("%{}%".format(q)),
-                                        User.username.like("%{}%".format(q))))
-                            .all())
+    if request.args.get('q'):
+        q = request.args.get('q')
+        page = request.args.get('page')
+        if page:
+            try:
+                page = int(page)
+                search_results = load_search_results(db_sess, session.get("uid"), q, REPORT_PAGE_SIZE, page)
+            except ValueError:
+                return flash_and_redirect("Invalid page input", "alert alert-danger", "reports")
+        else:
+            search_results = load_search_results(db_sess, session.get("uid"), q, REPORT_PAGE_SIZE)
+            page = 0
         reports = []
         ids_set = set()
         for col in search_results:
@@ -142,7 +140,10 @@ def search():
             else:
                 report_dict['tags'] = rtags
             reports.append(report_dict)
-        return render_template("search.html", submitted=True, reports=reports)
+        prev_url = url_for('search', q=q, page=page-1) if page > 0 else None
+        next_reports = load_search_results(db_sess, session.get("uid"), q, REPORT_PAGE_SIZE, page + 1)
+        next_url = url_for('search', q=q, page=page+1) if next_reports else None
+        return render_template("search.html", submitted=True, reports=reports, prev=prev_url, next=next_url)
     return render_template("search.html", submitted=False)
 
 ################################### FILES ######################################
@@ -156,8 +157,8 @@ def download_file():
     except (ValueError, TypeError):
         return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
     # ensure user has permission to access report content
-    user_report_ids = [col.Report.id for col in load_user_reports(db_sess, session.get("uid"))]
-    if rid not in user_report_ids:
+    report = load_user_report(db_sess, session.get("uid"), rid)
+    if not rpeort:
         return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
     # ensure file belongs to correct report
     report_file_ids = [f.id for f in load_report_files(db_sess, rid)]
@@ -182,8 +183,8 @@ def delete_file():
     except (ValueError, TypeError):
         return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
     # ensure user has permission to access report content
-    user_report_ids = [col.Report.id for col in load_user_reports(db_sess, session.get("uid"))]
-    if rid not in user_report_ids:
+    report = load_user_report(db_sess, session.get("uid"), rid)
+    if not report:
         return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
     # ensure file belongs to correct report
     report_file_ids = [f.id for f in load_report_files(db_sess, rid)]
@@ -205,7 +206,16 @@ def delete_file():
 @app.route('/reports')
 @require_login
 def reports():
-    reports = load_user_reports(db_sess, session.get("uid"))
+    page = request.args.get('page')
+    if page:
+        try:
+            page = int(page)
+            reports = load_user_reports(db_sess, session.get("uid"), REPORT_PAGE_SIZE, page)
+        except ValueError:
+            return flash_and_redirect("Invalid page input", "alert alert-danger", "reports")
+    else:
+        reports = load_user_reports(db_sess, session.get("uid"), REPORT_PAGE_SIZE)
+        page = 0
     data = []
     for col in reports:
         report_dict = {}
@@ -231,29 +241,28 @@ def reports():
         else:
             report_dict['tags'] = rtags
         data.append(report_dict)
-    return render_template("reports.html", reports=data)
+    prev_url = url_for('reports', page=page-1) if page > 0 else None
+    next_reports = load_user_reports(db_sess, session.get("uid"), REPORT_PAGE_SIZE, page + 1)
+    next_url = url_for('reports', page=page+1) if next_reports else None
+    return render_template("reports.html", reports=data, prev=prev_url, next=next_url)
 
 @app.route('/report', methods=['GET'])
 @require_login
 def show_report():
-    # search through user specific reports to ensure proper permission
-    user_reports = load_user_reports(db_sess, session.get("uid"))
     try:
-        req_rid = int(request.args.get('id'))
+        rid = int(request.args.get('id'))
     except ValueError:
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
-    report = None
-    for col in user_reports:
-        if req_rid == col.Report.id:
-            report = col.Report
-            break
+    # search through user specific reports to ensure proper permission
+    report = load_user_report(db_sess, session.get("uid"), rid)
     if not report:
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
+    report = report.Report
     report_dict = {}
     report_dict['id'] = report.id
     report_dict['name'] = report.name
     report_dict['desc'] = report.desc
-    user = load_user(db_sess, col.Report.creator_id)
+    user = load_user(db_sess, report.creator_id)
     if user:
         report_dict['creatid'] = user.User.username
     else:
@@ -283,16 +292,13 @@ def update_report():
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
     # search through user specific reports to ensure proper permission
     try:
-        req_rid = int(request.args.get('id'))
+        rid = int(request.args.get('id', type=int))
     except ValueError:
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
-    report = None
-    for col in load_user_reports(db_sess, session.get("uid")):
-        if req_rid == col.Report.id:
-            report = col.Report
-            break
+    report = load_user_report(db_sess, session.get("uid"), rid)
     if not report:
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
+    report = report.Report
     allowed_groups = [str(col.Group.id) for col in load_user_groups(db_sess, session.get("uid"))]
     if request.form['group'] not in allowed_groups:
         flash("Invalid group input", "alert alert-danger")
@@ -399,16 +405,13 @@ def add_report():
 @require_login
 def delete_report():
     try:
-        req_rid = int(request.args.get('id'))
+        rid = int(request.args.get('id'))
     except ValueError:
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
-    report = None
-    for col in load_user_reports(db_sess, session.get("uid")):
-        if req_rid == col.Report.id:
-            report = col.Report
-            break
+    report = load_user_report(db_sess, session.get("uid"), rid)
     if not report:
         return flash_and_redirect("Report not found", "alert alert-danger", "reports")
+    report = report.Report
     report_files = load_report_files(db_sess, report.id)
     for file in report_files:
         delete_file_helper(file)

@@ -85,7 +85,7 @@ sample_names = ["COVID-19", "Jupiter Landing!", "Mohammed Ali vs Mike Tyson", "A
 sample_desc = "Lorem ipsum dolor sit amet." * 6
 
 report_ids = []
-for i in range(0, 1000):
+for i in range(0, 6000):
     name = random.choice(sample_names)
     creator_id = random.choice(users_ids)
     group_id = random.choice(groups_ids)
@@ -119,7 +119,7 @@ sample_files = [(os.path.join(sample_data_dir, "pdf-file.pdf"), Media_types_enum
                 ,(os.path.join(sample_data_dir, "mp4-file.mp4"), Media_types_enum.mp4)]
 
 sample_file_names = ["Jupiter landing", "Albaik's Best Meal", "Best Place to Visit",
-                    "Blizzard Ent.", "One Piece", "Best Webapp", "19-NCOV Shocking Facts!",
+                    "Blizzard Ent.", "One Piece", "Best Webapp", "COVID-19 Shocking Facts!",
                     "Stackoverflow", "Clean Code Example", "Super Classified", "Eyes Only!"]
 new_files = []
 for i in range(0, 2000):
