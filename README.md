@@ -37,7 +37,7 @@ relational database for data storage. T run the application locally, follow the 
   - `Mysql 8.0`
   - `Python 3.7`
   - Python 3 `Pip 20.0`
-2. Install project dependencies in a Python virtual environment:
+2. Install project dependencies in a Python virtual environment(if you wish  to install the dependencies systemwide you can skip to the last command in this step although its not recommended):
   - Using `pip`, install `virtualenv`, (assuming `pip` here is pointing
     to your Python 3's pip executable, otherwise you probably can use `pip3` instead):
     ```
@@ -51,7 +51,7 @@ relational database for data storage. T run the application locally, follow the 
     ```
   - Activate the virtual environment:
     ```
-    $ . venv/bin/activates
+    $ . venv/bin/activate
     ```
   - Install project dependencies in the virtual environment:
     ```

@@ -18,10 +18,14 @@
         <table class="table table-striped table-bordered table-hover table-condensed">
           <tr>
             <th>Group Name</th>
+            <th>Number of Users</th>
+            <th>Number of Reports</th>
           </tr>
           {% for group in groups %}
             <tr class="clickable-row" data-href="{{ url_for('show_group', id=group.id) }}">
-              <td><a href="#">{{ group.group_name }}</a></td>
+              <td><a href="#">{{ group['name'] }}</a></td>
+              <td><a href="#">{{ group['user_count'] }}</a></td>
+              <td><a href="#">{{ group['report_count'] }}</a></td>
             </tr>
           {% endfor %}
         </table>

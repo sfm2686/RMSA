@@ -65,7 +65,6 @@ def login():
             return redirect(url_for('index'))
         else:
             return flash_and_redirect("Invalid username or password", "alert alert-danger", "login")
-
     return render_template("login.html")
 
 # dev login
@@ -76,7 +75,6 @@ def login():
 #         session["has_admin_access"] = True
 #         session["uid"] = 1
 #         return redirect(url_for('reports'))
-#
 #     return render_template("login.html")
 
 @app.route('/logout')
@@ -132,53 +130,6 @@ def search():
             reports.append(report_dict)
         return render_template("search.html", submitted=True, reports=reports)
     return render_template("search.html", submitted=False)
-    # if request.args.get('q'):
-    #     q = request.args.get('q')
-    #     page = request.args.get('page')
-    #     if page:
-    #         try:
-    #             page = int(page)
-    #             search_results = load_search_results(db_sess, session.get("uid"), q, REPORT_PAGE_SIZE, page)
-    #         except ValueError:
-    #             return flash_and_redirect("Invalid page input", "alert alert-danger", "reports")
-    #     else:
-    #         search_results = load_search_results(db_sess, session.get("uid"), q, REPORT_PAGE_SIZE)
-    #         page = 0
-    #     page = abs(page) # ensure number is positive
-    #     reports = []
-    #     ids_set = set()
-    #     for col in search_results:
-    #         if col.Report.id in ids_set:
-    #             continue
-    #         ids_set.add(col.Report.id)
-    #         report_dict = {}
-    #         report_dict['id'] = col.Report.id
-    #         report_dict['name'] = col.Report.name
-    #         col_limit = 10
-    #         if len(col.Report.desc) >= col_limit:
-    #             report_dict['desc'] = "{}...".format(col.Report.desc[:col_limit])
-    #         else:
-    #             report_dict['desc'] = col.Report.desc
-    #         user = load_user(db_sess, col.Report.creator_id)
-    #         if user:
-    #             report_dict['creatid'] = user.User.username
-    #         else:
-    #             report_dict['creatid'] = "Deleted"
-    #         report_dict['group'] = col.Group.group_name
-    #         report_dict['nfiles'] = len(load_report_files(db_sess, col.Report.id))
-    #         rtags = ""
-    #         for t in load_report_tags(db_sess, col.Report.id):
-    #             rtags = rtags + t.Tag.tag + " "
-    #         if len(rtags) >= col_limit:
-    #             report_dict['tags'] = "{}...".format(rtags[:col_limit])
-    #         else:
-    #             report_dict['tags'] = rtags
-    #         reports.append(report_dict)
-    #     prev_url = url_for('search', q=q, page=page-1) if page > 0 else None
-    #     next_reports = load_search_results(db_sess, session.get("uid"), q, REPORT_PAGE_SIZE, page + 1)
-    #     next_url = url_for('search', q=q, page=page+1) if next_reports else None
-    #     return render_template("search.html", submitted=True, reports=reports, prev=prev_url, next=next_url)
-    # return render_template("search.html", submitted=False)
 
 ################################### FILES ######################################
 
@@ -192,7 +143,7 @@ def download_file():
         return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
     # ensure user has permission to access report content
     report = load_user_report(db_sess, session.get("uid"), rid)
-    if not rpeort:
+    if not report:
         return flash_and_redirect("Invalid input", "alert alert-danger", "reports")
     # ensure file belongs to correct report
     report_file_ids = [f.id for f in load_report_files(db_sess, rid)]
@@ -459,7 +410,16 @@ def delete_report():
 @require_admin_access
 @require_login
 def groups():
-    return render_template("groups.html", groups=load_all_groups(db_sess))
+    group_records = load_all_groups(db_sess)
+    groups = []
+    for group in group_records:
+        group_dict = {}
+        group_dict['id'] = group.id
+        group_dict['name'] = group.group_name
+        group_dict['user_count'] = db_sess.query(User_groups).filter(User_groups.group_id == group.id).count()
+        group_dict['report_count'] = db_sess.query(Report).filter(Report.group_id == group.id).count()
+        groups.append(group_dict)
+    return render_template("groups.html", groups=groups)
 
 @app.route('/group', methods=['GET'])
 @require_admin_access
@@ -672,3 +632,7 @@ def delete_user():
 @app.errorhandler(404)
 def not_found(e):
     return render_template("404.html")
+
+@app.errorhandler(500)
+def not_found(e):
+    return render_template("500.html")
