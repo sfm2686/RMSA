@@ -59,6 +59,7 @@ def login():
         post_password = request.form['password']
         user = db_sess.query(User).filter_by(username=post_username).first()
         if user and bcrypt.checkpw(post_password.encode("utf-8"), user.password.encode("utf-8")):
+            session.permanent = True
             session["loggedin"] = True
             session["has_admin_access"] = Roles_enum.ADMIN.value == user.role_id
             session["uid"] = user.id
