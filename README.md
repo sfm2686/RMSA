@@ -31,13 +31,23 @@ Candidates should keep three things in mind while implementing this project:
 
 ## Running the Application
 This project was developed in Python-flask for the web application and Mysql
-relational database for data storage. T run the application locally, follow the steps below.
+relational database for data storage. To run the application locally, follow the steps below.
 
 1. Ensure you have the following installed on your system:
-  - `Mysql 8.0`
+  - `git 2.20`
+  - `Mysql 8.0` Ensure you have a user `root` with no password in Mysql to allow the application access
   - `Python 3.7`
   - Python 3 `Pip 20.0`
-2. Install project dependencies in a Python virtual environment(if you wish  to install the dependencies systemwide you can skip to the last command in this step although its not recommended):
+2. Download the code from the Github repository
+  - Clone the repository containing the code by executing:
+    ```
+    $ git clone https://github.com/sfm2686/RMSA.git
+    ```
+  - Navigate inside the cloned directory of the project
+    ```
+    $ cd RMSA
+    ```
+3. Install project dependencies in a Python virtual environment(if you wish  to install the dependencies systemwide you can skip to the last command in this step although its not recommended):
   - Using `pip`, install `virtualenv`, (assuming `pip` here is pointing
     to your Python 3's pip executable, otherwise you probably can use `pip3` instead):
     ```
@@ -57,7 +67,7 @@ relational database for data storage. T run the application locally, follow the 
     ```
     (venv)$ pip install -r requirements.txt
     ```
-3. Create and seed the database:
+4. Create and seed the database:
   - The `create_and_seed_db.py` script recreates the database and seeds it with dummy
     data. The script generates data for every table in the database, including users, roles,
     dummy groups, dummy files and dummy reports along with randomized relationships between entities
@@ -70,11 +80,11 @@ relational database for data storage. T run the application locally, follow the 
     ```
     (venv)$ python create_and_seed_db.py 1000 600
     ```
-4. Run the application:
+5. Run the application:
   ```
   (venv)$ python app.py
   ```
-5. Open the application in a web browser using the url: `http://127.0.0.1:5000/`
+6. Open the application in a web browser using the url: [http://127.0.0.1:5000/](http://127.0.0.1:5000/)
 
 ## Assumptions and Impacts:
 This section mentions the assumptions the developer had at the time of development when facing
