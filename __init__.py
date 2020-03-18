@@ -12,10 +12,11 @@ csrf.init_app(app)
 app.config['SECRET_KEY'] = os.urandom(12).hex()
 
 db_url = os.environ['DATABASE_URL']
+db_name = os.environ['DATABASE_NAME']
 
 db_engine = create_engine(db_url)
-if database_exists("{}/RMSA".format(db_url)):
-    db_engine.execute("USE RMSA") # select application db
+if database_exists("{}/{}".format(db_url, db_name)):
+    db_engine.execute("USE {}".format(db_name)) # select application db
 else:
     raise SystemExit("Please make sure your create and seed the database before running the application.")
 

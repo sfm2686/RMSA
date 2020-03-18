@@ -28,12 +28,14 @@ except ValueError:
     nfiles = DEFAULT_NUMBER_OF_FILES
 
 db_url = os.environ['DATABASE_URL']
+db_name = os.environ['DATABASE_NAME']
 
 db_engine = create_engine(db_url)
-db_engine.execute("DROP DATABASE IF EXISTS RMSA") #drop db if exists
-log("Dropped old table")
-db_engine.execute("CREATE DATABASE IF NOT EXISTS RMSA") #create db again
-db_engine.execute("USE RMSA") # select new db
+# db_engine.execute("DROP DATABASE IF EXISTS RMSA") #drop db if exists
+# log("Dropped old table")
+# db_engine.execute("CREATE DATABASE IF NOT EXISTS RMSA") #create db again
+# db_engine.execute("USE RMSA") # select new db
+db_engine.execute("USE {}".format(db_name)) # select new db
 
 tables_def.Base.metadata.create_all(db_engine)
 log("Created table")
