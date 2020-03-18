@@ -30,8 +30,12 @@ Candidates should keep three things in mind while implementing this project:
 
 
 ## Running the Application
-This project was developed in Python-flask for the web application and Mysql
-relational database for data storage. To run the application locally, follow the steps below.
+The assessment above was implement as a web application. The project was developed
+in Python-flask for the web application and Mysql relational database for data
+storage. To run the application locally, follow the steps below.
+
+Note: you can point the application to your own database using your credentials by changing the
+the database information in `__init__.py` for the application and `create_and_seed_db.py` for seeding.
 
 1. Ensure you have the following installed on your system:
   - `git 2.20`
@@ -118,6 +122,6 @@ has to be hard-coded.
 This section mentions the improvements and enhancements I would implement in the application in the future.
 1. Utilize docker and docker-compose for each the flask application and the database to make deployment easier
 2. Enhance the UI and UX of the application by including a front-end framework such as Reactjs or Vuejs and implement more specific error messages and front-end validation
-3. Factor out the repeated logic to helper functions or other modules
+3. Factor out the repeated logic and operations to helper functions or other modules
 4. Break `views.py` into a number of smaller files for better maintainability and readability
 5. Utilize `Flask-wtf` forms instead of raw html

@@ -29,12 +29,13 @@ except ValueError:
 
 db_engine = create_engine('mysql+pymysql://root:@localhost')
 db_engine.execute("DROP DATABASE IF EXISTS RMSA") #drop db if exists
-log("Dropped old table")
+log("Dropped old database")
 db_engine.execute("CREATE DATABASE IF NOT EXISTS RMSA") #create db again
+log("Created new database")
 db_engine.execute("USE RMSA") # select new db
 
 tables_def.Base.metadata.create_all(db_engine)
-log("Created table")
+log("Created tables")
 
 Session = sessionmaker(bind=db_engine)
 sess = Session()
@@ -49,7 +50,7 @@ users_role = Role(id=Roles_enum.USER.value, role=Roles_enum.USER.name)
 sess.add(users_role)
 
 sess.commit()
-log("Adde roles")
+log("Inserted roles")
 ################################################################################
 # seed users data
 
@@ -65,7 +66,7 @@ for userinfo in ["elonmusk", "timcook", "mohammedali", "stevewozniak", "dennisri
     users_ids.append(user.id)
 
 sess.commit()
-log("Inserted users to the database")
+log("Inserted users")
 ################################################################################
 # seed groups data
 
@@ -85,7 +86,7 @@ for g in sample_groups:
             sess.add(User_groups(group.id, uid))
 
 sess.commit()
-log("Inserted groups to the database")
+log("Inserted groups")
 ################################################################################
 # seed tags data
 
@@ -96,7 +97,7 @@ for tag in Tags_enum:
     tag_ids.append(tag.id)
 
 sess.commit()
-log("Inserted tags to the database")
+log("Inserted tags")
 ################################################################################
 # seed dummy reports
 
@@ -121,7 +122,7 @@ for i in range(0, nreports):
     sess.commit()
     report_ids.append(report.id)
 
-log("Inserted {} reports to the database".format(nreports))
+log("Inserted {} reports".format(nreports))
 ################################################################################
 # seed dummy files
 
@@ -160,4 +161,4 @@ for file_path, media_type in new_files:
     sess.add(file)
 
 sess.commit()
-log("Inserted {} files to the database".format(nfiles))
+log("Inserted {} files".format(nfiles))
