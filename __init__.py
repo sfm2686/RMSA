@@ -11,8 +11,10 @@ app = Flask(__name__)
 csrf.init_app(app)
 app.config['SECRET_KEY'] = os.urandom(12).hex()
 
-db_engine = create_engine('mysql+pymysql://root:@localhost')
-if database_exists('mysql+pymysql://root:@localhost/RMSA'):
+db_url = os.environ['DATABASE_URL']
+
+db_engine = create_engine(db_url)
+if database_exists("{}/RMSA".format(db_url)):
     db_engine.execute("USE RMSA") # select application db
 else:
     raise SystemExit("Please make sure your create and seed the database before running the application.")

@@ -27,7 +27,9 @@ except ValueError:
     nreports = DEFAULT_NUMBER_OF_REPORTS
     nfiles = DEFAULT_NUMBER_OF_FILES
 
-db_engine = create_engine('mysql+pymysql://root:@localhost')
+db_url = os.environ['DATABASE_URL']
+
+db_engine = create_engine(db_url)
 db_engine.execute("DROP DATABASE IF EXISTS RMSA") #drop db if exists
 log("Dropped old table")
 db_engine.execute("CREATE DATABASE IF NOT EXISTS RMSA") #create db again
